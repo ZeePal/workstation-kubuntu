@@ -1,0 +1,47 @@
+- name: Install commonly used apt packages
+  apt:
+    state: present
+    update_cache: yes
+    cache_valid_time: 43200
+    name:
+      - curl
+      - wget
+      - ansible
+      - ansible-lint
+      - python-apt
+      - python-setuptools
+      - ent
+      - jq
+      - fzf
+      - google-chrome-stable
+      - git
+      - meld
+      - python3-pip
+      - shellcheck
+      - tilix
+      - pwgen
+      - sysstat
+      - zip
+      - unzip
+      - vim
+      - vlock
+      - rsync
+      - build-essential
+      - apt-file
+      - software-properties-common
+      - ppa-purge
+      - powertop
+      - tlp
+      - tlp-rdw
+      - atom
+      - gpg
+      - golang-go
+      - uidmap
+      - dconf-editor
+      - gparted
+      - handbrake
+      - flameshot  # TODO: Test and revert to shutter if needed
+      - gimp
+      - neofetch
+      - kdenlive
+      - virtualbox

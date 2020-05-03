@@ -1,0 +1,4 @@
+- include: alias/main.yml
+
+- include: history.yml
+- include: home.yml

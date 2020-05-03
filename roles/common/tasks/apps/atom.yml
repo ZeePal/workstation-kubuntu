@@ -1,0 +1,77 @@
+- name: Install commonly used atom packages
+  become: true
+  become_user: "{{ primary_username }}"
+  apm:
+    name:
+      - atom-cfn-lint
+      - atom-ide-ui
+      - atom-material-syntax
+      - atom-material-ui
+      - busy-signal
+      - file-icons
+      - ide-python
+      - ide-yaml
+      - intentions
+      - language-ansible
+      - language-terraform
+      - linter
+      - linter-ansible-linting
+      - linter-ansible-syntax
+      - linter-js-cloudformation-yaml
+      - linter-shellcheck
+      - linter-terraform-syntax
+      - linter-ui-default
+      - markdown-preview-plus
+      - python-black
+      - python-indent
+      - script
+      - terraform-fmt
+      - terraform-lookup
+
+
+- name: Hide ide-yamls hello message
+  copy:  # Used to create a once off empty file, no updating modified date!
+    content: ""
+    dest: "/home/{{ primary_username }}/.atom/packages/ide-yaml/REQUIREMENTS_CHECK_PASSED"
+    force: no
+    owner: "{{ primary_username }}"
+    group: "{{ primary_username }}"
+
+
+- name: Configure Atom
+  cson:
+    file: "/home/{{ primary_username }}/.atom/config.cson"
+    create: yes
+    changes:
+      - path: '*.welcome.showOnStartup'
+        value: false
+      - path: '*.core.telemetryConsent'
+        value: limited
+      - path: '*.core.autoHideMenuBar'
+        value: true
+      - path: '*.core.disabledPackages'
+        value: [linter, markdown-preview]
+      - path: '*.core.themes'
+        value: [atom-material-ui, atom-material-syntax]
+      - path: '*.editor.preferredLineLength'
+        value: 88
+      - path: '*.editor.showIndentGuide'
+        value: true
+      - path: '*.editor.showInvisibles'
+        value: true
+      - path: '*.ide-python.python'
+        value: /usr/bin/python3
+      - path: '*.linter-shellcheck.enableNotice'
+        value: true
+      - path: '*.linter-shellcheck.userParameters'
+        value: -x
+      - path: '*.python-black.showErrors'
+        value: flash
+      - path: '*.spell-check.locales'
+        value: [en-US]
+      - path: '*.atom-ide-ui.use.atom-ide-diagnostics'
+        value: always
+      - path: '*.atom-ide-ui.use.atom-ide-diagnostics-ui'
+        value: always
+      - path: '*.atom-beautify.python.disabled'
+        value: true

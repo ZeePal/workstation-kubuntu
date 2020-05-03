@@ -1,0 +1,18 @@
+- name: Setup Git command aliases
+  blockinfile:
+    path: "/home/{{ primary_username }}/.bash_aliases"
+    marker: "# {mark} git"
+    create: yes
+    owner: "{{ primary_username }}"
+    group: "{{ primary_username }}"
+    mode: u=rw,go=r
+    block: |
+      alias g=git
+      alias gs="git status"
+      alias gd="git diff"
+      alias gD="git difftool --dir-diff"
+      alias gdc="git diff --cached"
+      alias gDc="git difftool --dir-diff --cached"
+      alias ga="git add ."
+      alias gc="git commit -m"
+      alias gp="git push"

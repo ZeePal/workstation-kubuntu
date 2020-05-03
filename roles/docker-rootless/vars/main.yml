@@ -1,0 +1,13 @@
+docker:
+  storage:
+    archives: /opt/docker
+    binarys: "/home/{{ primary_username }}/bin"
+  archive:
+    docker:
+      url: 'https://download.docker.com/linux/static/stable/x86_64/docker-19.03.8.tgz'
+      hash:
+        sha512: '4ac1ce9a6c92cefc89829a8dfa1380470d0c34f4a0efcae0c1105d5328f507281905267fbbc2c49241dab38e090211a676568becd12def17d7105af1b480f337'
+    rootless:
+      url: 'https://download.docker.com/linux/static/stable/x86_64/docker-rootless-extras-19.03.8.tgz'
+      hash:
+        sha512: '7262ccf2b39928d2586000f88db7192caaa8c70c65a8702f495aa1ad418d9e2f515af24416397d584e8bf158047edfbd14e8225bb3e5b402d947cf315a4db2fb'

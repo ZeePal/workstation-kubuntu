@@ -1,0 +1,13 @@
+- name: Install the Google Chrome apt repository key
+  apt_key:
+    state: present
+    id: EB4C1BFD4F042F6DDDCCEC917721F63BD38B4796
+    url: https://dl.google.com/linux/linux_signing_key.pub
+
+- name: Install the Google Chrome apt repository
+  apt_repository:
+    state: present
+    # TODO: add Signed-by but chrome duplicates the repo causing apt update issues
+    repo: deb [arch=amd64] http://dl.google.com/linux/chrome/deb/ stable main
+    filename: google-chrome  # As chrome manages its own repo list
+    update_cache: no

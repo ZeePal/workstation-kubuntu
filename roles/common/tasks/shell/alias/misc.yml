@@ -1,0 +1,11 @@
+- name: Setup Misc command aliases
+  blockinfile:
+    path: "/home/{{ primary_username }}/.bash_aliases"
+    marker: "# {mark} Misc"
+    create: yes
+    owner: "{{ primary_username }}"
+    group: "{{ primary_username }}"
+    mode: u=rw,go=r
+    block: |
+      alias o=xdg-open
+      alias open=xdg-open

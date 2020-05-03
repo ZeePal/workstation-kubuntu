@@ -1,0 +1,4 @@
+- include: atom.yml
+- include: tilix.yml
+- include: thefuck.yml
+- include: fzf.yml

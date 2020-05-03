@@ -1,0 +1,11 @@
+- name: Install the Atom apt repository key
+  apt_key:
+    state: present
+    id: 0A0FAB860D48560332EFB581B75442BBDE9E3B09
+    url: https://packagecloud.io/AtomEditor/atom/gpgkey
+
+- name: Install the Atom apt repository
+  apt_repository:
+    state: present
+    repo: deb [signed-by=0A0FAB860D48560332EFB581B75442BBDE9E3B09 arch=amd64] https://packagecloud.io/AtomEditor/atom/any/ any main
+    update_cache: no

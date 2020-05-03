@@ -1,0 +1,9 @@
+- hosts: all
+  roles:
+    - common
+    - docker-rootless
+    - awscli
+    - gcloud
+    - terraform
+    - discord
+    - slack

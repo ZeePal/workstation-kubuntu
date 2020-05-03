@@ -1,0 +1,14 @@
+awscli:
+  update: true
+  gpg_key:
+    url: 'https://keyserver.ubuntu.com/pks/lookup?op=get&search=0xfb5db77fd5c118b80511ada8a6310acc4672475c'
+    hash:
+      sha512: 'b9aeac3f5be2eb4ea1a50f4bb0e87ba171363051d233f8555d61e58e264156678ebcfac7ff3a2a17aaad1e15804dd61b8b18ea515abee8d4fe8f884c32e90690'
+    storage:
+      raw: /opt/aws/cli/awscli.gpg.asc
+      keyring: /opt/aws/cli/awscli.gpg
+  archive:
+    url: 'https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip'
+    signature: 'https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip.sig'
+  storage:
+    prefix: /opt/aws/cli

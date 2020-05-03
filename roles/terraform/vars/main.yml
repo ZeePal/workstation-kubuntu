@@ -1,0 +1,24 @@
+hashicorp:
+  gpg_key:
+    url: 'https://keybase.io/hashicorp/pgp_keys.asc?fingerprint=91a6e7f85d05c65630bef18951852d87348ffc4c'
+    hash:
+      sha512: 'e1e30582cc8f2588523f85da241b4243d8be01f1f90644f93ba90046304cce57aafaa786d4a19305566e199664c181a31af2fc8cdd55358f2e99fa84e23edf19'
+    storage:
+      raw: /opt/terraform/hashicorp.gpg.asc
+      keyring: /opt/terraform/hashicorp.gpg
+
+terraform:
+  version: 0.12.24
+  default: true
+  storage:
+    prefix: /opt/terraform
+    install: /usr/local/bin/terraform
+  archive:
+    binary:
+      url: 'https://releases.hashicorp.com/terraform/0.12.24/terraform_0.12.24_linux_amd64.zip'
+      hash:
+        sha512: 'f2dd244c919d05e94443f7145982059b26cf9003a20f0b8f9a03877ca0362735035e222f038581d5755081e0de88fb3ab698edddea3eba3f87dd3c106e103a57'
+    hash:
+      url: 'https://releases.hashicorp.com/terraform/0.12.24/terraform_0.12.24_SHA256SUMS'
+    signature:
+      url: 'https://releases.hashicorp.com/terraform/0.12.24/terraform_0.12.24_SHA256SUMS.sig'

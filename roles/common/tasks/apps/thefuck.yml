@@ -1,0 +1,17 @@
+- name: Setup TheFuck
+  blockinfile:
+    dest: "/home/{{ primary_username }}/.bashrc"
+    marker: "# {mark} TheFuck"
+    block: |
+      eval $(thefuck --alias)
+
+- name: Alias for fuck
+  blockinfile:
+    path: "/home/{{ primary_username }}/.bash_aliases"
+    marker: "# {mark} TheFuck"
+    create: yes
+    owner: "{{ primary_username }}"
+    group: "{{ primary_username }}"
+    mode: u=rw,go=r
+    block: |
+      alias f=fuck

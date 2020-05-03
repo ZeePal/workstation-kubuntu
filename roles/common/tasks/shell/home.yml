@@ -1,0 +1,32 @@
+- name: Create $HOME/bin folder
+  file:
+    state: directory
+    path: "/home/{{ primary_username }}/bin/"
+    owner: "{{ primary_username }}"
+    group: "{{ primary_username }}"
+    mode: u=wrx,go=rx
+
+- name: Setup PATH for $HOME/bin
+  blockinfile:
+    dest: "/home/{{ primary_username }}/.bashrc"
+    marker: "# {mark} HomeBin"
+    block: |
+      export PATH=$PATH:$HOME/bin
+
+
+- name: Create git repos folder
+  file:
+    state: directory
+    path: "/home/{{ primary_username }}/git/"
+    owner: "{{ primary_username }}"
+    group: "{{ primary_username }}"
+    mode: u=wrx,go=rx
+
+- name: Symlink git repos folder
+  file:
+    state: link
+    path: "/home/{{ primary_username }}/Documents/git"
+    src: "/home/{{ primary_username }}/git/"
+    owner: "{{ primary_username }}"
+    group: "{{ primary_username }}"
+    mode: u=rwx,go=rx

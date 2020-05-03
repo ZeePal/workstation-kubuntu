@@ -1,0 +1,20 @@
+- name: Configure favourite dock icons
+  become: true
+  become_user: "{{ primary_username }}"
+  dconf:
+    key: /org/gnome/shell/favorite-apps
+    value: "['org.gnome.Nautilus.desktop', 'google-chrome.desktop', 'com.gexperts.Tilix.desktop', 'slack_slack.desktop', 'atom.desktop']"
+
+- name: Autohide the dock
+  become: true
+  become_user: "{{ primary_username }}"
+  dconf:
+    key: /org/gnome/shell/extensions/dash-to-dock/dock-fixed
+    value: 'false'
+
+- name: Configure autohide dock pressure
+  become: true
+  become_user: "{{ primary_username }}"
+  dconf:
+    key: /org/gnome/shell/extensions/dash-to-dock/pressure-threshold
+    value: '1.0'

@@ -1,0 +1,88 @@
+- name: Create AWS cli install folders
+  file:
+    state: directory
+    path: "{{ awscli['storage']['prefix'] }}/"
+    owner: root
+    group: root
+
+- name: Checking if AWS cli is already installed
+  stat:
+    path: /usr/local/bin/aws
+  register: aws_cli_binary
+
+
+- name: Download AWS cli gpg key
+  get_url:
+     url:  "{{ awscli['gpg_key']['url'] }}"
+     dest: "{{ awscli['gpg_key']['storage']['raw'] }}"
+     checksum: "sha512:{{ awscli['gpg_key']['hash']['sha512'] }}"
+  when: (not aws_cli_binary.stat.exists) or awscli['update']
+
+- name: Build AWS cli gpg keyring
+  command: "gpg --no-default-keyring --keyring '{{ awscli['gpg_key']['storage']['keyring'] }}' --import '{{ awscli['gpg_key']['storage']['raw'] }}'"
+  when: (not aws_cli_binary.stat.exists) or awscli['update']
+
+
+- name: Download AWS cli archive gpg signature
+  get_url:
+     url:  "{{ awscli['archive']['signature'] }}"
+     dest: "{{ awscli['storage']['prefix'] }}/awscli.zip.sig"
+  when: (not aws_cli_binary.stat.exists) or awscli['update']
+  register: aws_cli_archive_sig
+
+- name: Download AWS cli archive
+  get_url:
+     url:  "{{ awscli['archive']['url'] }}"
+     dest: "{{ awscli['storage']['prefix'] }}/awscli.zip"
+  when:
+    - aws_cli_archive_sig.changed  # To save redownloading
+    - (not aws_cli_binary.stat.exists) or awscli['update']
+  register: aws_cli_archive
+
+
+
+- name: Check AWS cli archive gpg signature
+  command: "gpg --no-default-keyring --keyring '{{ awscli['gpg_key']['storage']['keyring'] }}' --verify '{{ awscli['storage']['prefix'] }}/awscli.zip.sig' '{{ awscli['storage']['prefix'] }}/awscli.zip'"
+  when: ((not aws_cli_binary.stat.exists) or awscli['update'])
+
+
+- name: Extract AWS cli from archive
+  unarchive:
+    src: "{{ awscli['storage']['prefix'] }}/awscli.zip"
+    dest: "{{ awscli['storage']['prefix'] }}/"
+  when: (not aws_cli_binary.stat.exists) or awscli['update']
+
+
+- name: Update AWS cli
+  command:
+    cmd: ./aws/install --update
+    chdir: "{{ awscli['storage']['prefix'] }}/"
+  when:
+    - aws_cli_archive.changed
+    - (aws_cli_binary.stat.exists and awscli['update'])
+
+- name: Install AWS cli
+  command:
+    cmd: ./aws/install
+    chdir: "{{ awscli['storage']['prefix'] }}/"
+  when: not aws_cli_binary.stat.exists
+
+
+- name: Setup AWS cli aliases
+  blockinfile:
+    path: "/home/{{ primary_username }}/.bash_aliases"
+    marker: "# {mark} AWS"
+    create: yes
+    owner: "{{ primary_username }}"
+    group: "{{ primary_username }}"
+    mode: u=rw,go=r
+    block: |
+      alias a=aws
+
+- name: Setup AWS cli completers
+  blockinfile:
+    dest: "/home/{{ primary_username }}/.bashrc"
+    marker: "# {mark} AWS Completer"
+    block: |
+      complete -C '/usr/local/bin/aws_completer' aws
+      complete -C '/usr/local/bin/aws_completer' a

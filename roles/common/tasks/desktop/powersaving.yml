@@ -1,0 +1,5 @@
+- name: Kick off TLP
+  command: tlp start
+
+- name: Kick off Powertop
+  command: powertop --auto-tune

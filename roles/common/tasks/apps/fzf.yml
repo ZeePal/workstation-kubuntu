@@ -1,0 +1,7 @@
+- name: Setup fzf
+  blockinfile:
+    dest: "/home/{{ primary_username }}/.bashrc"
+    marker: "# {mark} fzf"
+    block: |
+      source /usr/share/doc/fzf/examples/key-bindings.bash
+      source /usr/share/doc/fzf/examples/completion.bash

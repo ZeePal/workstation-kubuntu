@@ -1,0 +1,5 @@
+- include: repos/main.yml
+
+- include: apt.yml
+- include: pip.yml
+- include: snap.yml

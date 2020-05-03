@@ -1,0 +1,6 @@
+- include: git.yml
+- include: misc.yml
+
+- include: _cd.yml
+- include: gcd.yml
+- include: tcd.yml

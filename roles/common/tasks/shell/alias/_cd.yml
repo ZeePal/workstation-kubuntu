@@ -1,0 +1,36 @@
+- name: Setup a simpler cd autocompleter
+  blockinfile:
+    path: "/home/{{ primary_username }}/.bash_aliases"
+    marker: "# {mark} _simpler_cd_completer"
+    create: yes
+    owner: "{{ primary_username }}"
+    group: "{{ primary_username }}"
+    mode: u=rw,go=r
+    block: !unsafe |
+      _simpler_cd_completer ()
+      {
+          local cur prev words cword;
+          _init_completion || return;
+          local IFS='
+      ' i j k;
+          compopt -o filenames;
+          for i in ${CDPATH//:/'
+      '};
+          do
+              k="${#COMPREPLY[@]}";
+              for j in $( compgen -d -- $i/$cur );
+              do
+                  if [[ ! -d ${j#$i/} ]]; then
+                      j+="/";
+                  fi;
+                  COMPREPLY[k++]=${j#$i/};
+              done;
+          done;
+          if [[ ${#COMPREPLY[@]} -eq 1 ]]; then
+              i=${COMPREPLY[0]};
+              if [[ "$i" == "$cur" && $i != "*/" ]]; then
+                  COMPREPLY[0]="${i}/";
+              fi;
+          fi;
+          return
+      }

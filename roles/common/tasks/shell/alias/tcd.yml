@@ -1,0 +1,12 @@
+- name: Setup tcd command alias
+  blockinfile:
+    path: "/home/{{ primary_username }}/.bash_aliases"
+    marker: "# {mark} tcd"
+    create: yes
+    owner: "{{ primary_username }}"
+    group: "{{ primary_username }}"
+    mode: u=rw,go=r
+    block: |
+      function _tcd { CDPATH=/tmp/phtest/ _simpler_cd_completer "$@"; }
+      complete -o nospace -F _tcd tcd
+      function tcd { local folder="/tmp/phtest/$1";[ -d "$folder" ] || mkdir -p "$folder"; cd "$folder"; }
