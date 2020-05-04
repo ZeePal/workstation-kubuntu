@@ -19,3 +19,4 @@
       - flake8
       - pyflakes
       - pycodestyle
+      - cfn-lint
