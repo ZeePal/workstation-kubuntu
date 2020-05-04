@@ -10,6 +10,7 @@
 - name: Setup vte for Tilix
   blockinfile:
     path: "/home/{{ primary_username }}/.bashrc"
+    insertbefore: "# BEGIN Eternal Bash History"
     marker: "# {mark} Tilix Config"
     block: |
       if [ $TILIX_ID ] || [ $VTE_VERSION ]; then
@@ -48,7 +49,7 @@
     scrollback-lines: 81920
     use-theme-colors: 'false'
 
-- name: Fix conflict with the default show desktop hotkey 
+- name: Fix conflict with the default show desktop hotkey
   become: true
   become_user: "{{ primary_username }}"
   dconf:

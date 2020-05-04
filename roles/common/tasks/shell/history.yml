@@ -1,6 +1,7 @@
 - name: Setup Eternal Bash History
   blockinfile:
     path: "/home/{{ primary_username }}/.bashrc"
+    insertafter: "# END Tilix Config"
     marker: "# {mark} Eternal Bash History"
     block: |
       # Undocumented feature which sets the size to "unlimited".
