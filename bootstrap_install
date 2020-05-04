@@ -6,6 +6,7 @@ REPO=https://github.com/ZeePal/workstation-ubuntu.git
 REPO_NAME="$(basename -s .git "$REPO")"
 
 
+sudo apt update
 sudo apt install -y make ansible git
 
 if [[ ! -e $GIT_FOLDER ]]; then
