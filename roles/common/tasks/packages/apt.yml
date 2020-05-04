@@ -47,3 +47,4 @@
       - lm-sensors
       - mesa-utils
       - pigz
+      - p7zip-full
