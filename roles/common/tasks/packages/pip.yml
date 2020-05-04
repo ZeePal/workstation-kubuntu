@@ -16,3 +16,6 @@
       - asciinema
       - docker-compose
       - cson
+      - flake8
+      - pyflakes
+      - pycodestyle

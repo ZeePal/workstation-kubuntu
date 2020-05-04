@@ -11,3 +11,4 @@
     repo: deb [arch=amd64] http://dl.google.com/linux/chrome/deb/ stable main
     filename: google-chrome  # As chrome manages its own repo list
     update_cache: no
+  register: apt_repo_googlechrome

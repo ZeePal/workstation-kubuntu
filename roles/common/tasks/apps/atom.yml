@@ -3,6 +3,7 @@
   become_user: "{{ primary_username }}"
   apm:
     name:
+      - atom-beautify
       - atom-cfn-lint
       - atom-ide-ui
       - atom-material-syntax

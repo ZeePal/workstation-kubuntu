@@ -1,8 +1,6 @@
 - name: Install commonly used apt packages
   apt:
     state: present
-    update_cache: yes
-    cache_valid_time: 43200
     name:
       - curl
       - wget
@@ -45,3 +43,7 @@
       - neofetch
       - kdenlive
       - virtualbox
+      - inotify-tools
+      - lm-sensors
+      - mesa-utils
+      - pigz

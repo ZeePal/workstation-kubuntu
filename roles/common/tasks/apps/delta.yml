@@ -1,0 +1,42 @@
+- name: Create Delta install folders
+  file:
+    state: directory
+    path: "{{ apps['delta']['storage']['prefix'] }}/"
+    owner: root
+    group: root
+
+- name: Download Delta
+  get_url:
+     url:  "{{ apps['delta']['archive']['url'] }}"
+     dest: "{{ apps['delta']['storage']['prefix'] }}/delta.tar.gz"
+     checksum: "sha512:{{ apps['delta']['archive']['hash']['sha512'] }}"
+
+- name: Extract Delta
+  unarchive:
+    src: "{{ apps['delta']['storage']['prefix'] }}/delta.tar.gz"
+    dest: "{{ apps['delta']['storage']['prefix'] }}/"
+    extra_opts: '--strip-components=1'
+
+- name: Symlink Delta
+  file:
+    state: link
+    path: "{{ apps['delta']['storage']['install'] }}"
+    src: "{{ apps['delta']['storage']['prefix'] }}/delta"
+    owner: root
+    group: root
+    mode: u=rwx,go=rx
+
+- name: Configure Delta to be used by git
+  blockinfile:
+    path: "/home/{{ primary_username }}/.gitconfig"
+    marker: "# {mark} delta"
+    create: yes
+    owner: "{{ primary_username }}"
+    group: "{{ primary_username }}"
+    mode: u=rw,go=r
+    block: |
+      [core]
+          pager = delta --plus-color="#012800" --minus-color="#340001" --theme='Monokai Extended'
+
+      [interactive]
+          diffFilter = delta --color-only

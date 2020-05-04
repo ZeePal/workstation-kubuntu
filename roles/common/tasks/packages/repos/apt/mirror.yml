@@ -3,3 +3,4 @@
     path: /etc/apt/sources.list
     regexp: 'http://([^/ ]+\.)?archive.ubuntu.com/ubuntu/'
     replace: "{{ packages['repos']['apt']['mirror'] }}"
+  register: apt_mirror

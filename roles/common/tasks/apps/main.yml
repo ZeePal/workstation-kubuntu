@@ -2,3 +2,5 @@
 - include: tilix.yml
 - include: thefuck.yml
 - include: fzf.yml
+- include: git.yml
+- include: delta.yml

@@ -1,0 +1,15 @@
+- name: Configure Meld as the difftool for git
+  blockinfile:
+    path: "/home/{{ primary_username }}/.gitconfig"
+    marker: "# {mark} meld"
+    create: yes
+    owner: "{{ primary_username }}"
+    group: "{{ primary_username }}"
+    mode: u=rw,go=r
+    block: |
+      [diff]
+          tool = meld
+      [difftool]
+          prompt = false
+      [difftool "meld"]
+          cmd = meld "$LOCAL" "$REMOTE"

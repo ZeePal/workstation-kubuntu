@@ -86,3 +86,9 @@
     block: |
       complete -C '/usr/local/bin/aws_completer' aws
       complete -C '/usr/local/bin/aws_completer' a
+
+- name: Install cfn-flip
+  pip:
+    state: present
+    executable: pip3
+    name: cfn-flip

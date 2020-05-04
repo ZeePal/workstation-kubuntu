@@ -2,3 +2,13 @@ packages:
   repos:
     apt:
       mirror: 'http://mirror.internode.on.net/pub/ubuntu/ubuntu/'
+
+apps:
+  delta:
+    storage:
+      prefix: /opt/delta
+      install: /usr/local/bin/delta
+    archive:
+      url: 'https://github.com/dandavison/delta/releases/download/0.1.1/delta-0.1.1-x86_64-unknown-linux-musl.tar.gz'
+      hash:
+        sha512: '18a4b292dc5a3756adf33adbfc3b20ea2d8ceb311b6d479975667b9ee8910c54b224442022f78c8accf5c3d174e4d7ed356f0daca4595739982012dae16a9f6e'
