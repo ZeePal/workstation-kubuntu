@@ -50,3 +50,4 @@
       - p7zip-full
       - iotop
       - iftop
+      - graphviz
