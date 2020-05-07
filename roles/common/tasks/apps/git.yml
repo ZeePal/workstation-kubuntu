@@ -13,3 +13,17 @@
           prompt = false
       [difftool "meld"]
           cmd = meld "$LOCAL" "$REMOTE"
+
+- name: Configure GPG signing
+  blockinfile:
+    path: "/home/{{ primary_username }}/.gitconfig"
+    marker: "# {mark} gpg"
+    create: yes
+    owner: "{{ primary_username }}"
+    group: "{{ primary_username }}"
+    mode: u=rw,go=r
+    block: |
+      [commit]
+      	gpgsign = true
+      [tag]
+      	gpgsign = true
