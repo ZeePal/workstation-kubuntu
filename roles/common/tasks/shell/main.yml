@@ -2,3 +2,4 @@
 
 - include: history.yml
 - include: home.yml
+- include: secrets.yml
