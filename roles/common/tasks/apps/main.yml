@@ -4,3 +4,4 @@
 - include: fzf.yml
 - include: git.yml
 - include: delta.yml
+- include: rust.yml

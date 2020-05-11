@@ -8,12 +8,16 @@
       - atom-ide-ui
       - atom-material-syntax
       - atom-material-ui
+      - build-cargo
+      - build
       - busy-signal
       - file-icons
       - ide-python
+      - ide-rust
       - ide-yaml
       - intentions
       - language-ansible
+      - language-rust
       - language-terraform
       - linter
       - linter-ansible-linting
