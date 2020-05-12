@@ -51,3 +51,4 @@
       - iotop
       - iftop
       - graphviz
+      - net-tools
