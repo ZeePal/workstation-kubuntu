@@ -52,3 +52,5 @@
       - iftop
       - graphviz
       - dos2unix
+      - whois
+      - geoip-bin
