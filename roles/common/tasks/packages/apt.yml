@@ -51,4 +51,4 @@
       - iotop
       - iftop
       - graphviz
-      - net-tools
+      - dos2unix
