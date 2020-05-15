@@ -44,6 +44,8 @@
 
 
 - name: Configure Atom
+  become: true
+  become_user: "{{ primary_username }}"
   cson:
     file: "/home/{{ primary_username }}/.atom/config.cson"
     create: yes
@@ -79,4 +81,8 @@
       - path: '*.atom-ide-ui.use.atom-ide-diagnostics-ui'
         value: always
       - path: '*.atom-beautify.python.disabled'
+        value: true
+      - path: '*.atom-beautify.rust.beautify_on_save'
+        value: true
+      - path: '*.linter-terraform-syntax.newVersion'
         value: true
