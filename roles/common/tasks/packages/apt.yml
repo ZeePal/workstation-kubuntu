@@ -54,3 +54,4 @@
       - dos2unix
       - whois
       - geoip-bin
+      - remmina
