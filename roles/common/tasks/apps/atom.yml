@@ -42,6 +42,11 @@
     owner: "{{ primary_username }}"
     group: "{{ primary_username }}"
 
+- name: Fix atom-beautify using beautysh
+  replace:
+    path: "/home/{{ primary_username }}/.atom/packages/atom-beautify/src/beautifiers/beautysh.coffee"
+    regexp: " '-f',"
+    replace: ''
 
 - name: Configure Atom
   become: true
