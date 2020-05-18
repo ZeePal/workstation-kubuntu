@@ -27,7 +27,6 @@
       - linter-terraform-syntax
       - linter-ui-default
       - markdown-preview-plus
-      - python-black
       - python-indent
       - script
       - terraform-fmt
@@ -77,16 +76,20 @@
         value: true
       - path: '*.linter-shellcheck.userParameters'
         value: -x
-      - path: '*.python-black.showErrors'
-        value: flash
       - path: '*.spell-check.locales'
         value: [en-US]
       - path: '*.atom-ide-ui.use.atom-ide-diagnostics'
         value: always
       - path: '*.atom-ide-ui.use.atom-ide-diagnostics-ui'
         value: always
-      - path: '*.atom-beautify.python.disabled'
+      - path: '*.atom-beautify.bash.beautify_on_save'
         value: true
+      - path: '*.atom-beautify.python.beautify_on_save'
+        value: true
+      - path: '*.atom-beautify.python.default_beautifier'
+        value: black
+      - path: '*.atom-beautify.executables.black.path'
+        value: black
       - path: '*.atom-beautify.rust.beautify_on_save'
         value: true
       - path: '*.linter-terraform-syntax.newVersion'
