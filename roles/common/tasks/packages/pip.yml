@@ -20,3 +20,4 @@
       - pyflakes
       - pycodestyle
       - cfn-lint
+      - beautysh
