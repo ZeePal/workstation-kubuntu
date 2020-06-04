@@ -21,3 +21,4 @@
       - pycodestyle
       - cfn-lint
       - beautysh
+      - pwntools
