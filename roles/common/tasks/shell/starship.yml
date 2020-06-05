@@ -1,0 +1,58 @@
+- name: Install Starship
+  become: true
+  become_user: "{{ primary_username }}"
+  command: "'/home/{{ primary_username }}/.cargo/bin/cargo' install starship"
+  args:
+    creates: "/home/{{ primary_username }}/.cargo/bin/starship"
+
+- name: Install Starship config
+  copy:
+    dest: "/home/{{ primary_username }}/.config/starship.toml"
+    owner: "{{ primary_username }}"
+    group: "{{ primary_username }}"
+    mode: u=rwx,g=rx,o=
+    content: |
+      add_newline = false
+      [line_break]
+      disabled = true
+
+      [character]
+      use_symbol_for_status = true
+
+      [aws.region_aliases]
+      ap-southeast-2 = "au"
+
+      [git_branch]
+      symbol = "🌱"
+      [git_state]
+      cherry_pick = "🍒"
+      [docker_context]
+      symbol = "🐋"
+      [package]
+      symbol = "📦"
+
+      [aws]
+      symbol = "☁️ "
+
+      [python]
+      symbol = "🐍"
+      [rust]
+      symbol = "🦀"
+      [go]
+      symbol = "🐹"
+      [terraform]
+      symbol = "💠"
+
+- name: Setup Starship Terminal Prompt
+  blockinfile:
+    path: "/home/{{ primary_username }}/.bashrc"
+    insertafter: "# END Eternal Bash History"
+    marker: "# {mark} Starship"
+    block: |
+      eval "$(starship init bash)"
+      function _append_history {
+        local STATUS=$?  # Passthrough the last exit code for starship
+        history -a
+        return $STATUS
+      }
+      PROMPT_COMMAND="_append_history;starship_precmd"
