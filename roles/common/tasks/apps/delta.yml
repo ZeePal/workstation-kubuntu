@@ -15,6 +15,7 @@
   unarchive:
     src: "{{ apps['delta']['storage']['prefix'] }}/delta.tar.gz"
     dest: "{{ apps['delta']['storage']['prefix'] }}/"
+    remote_src: yes
     extra_opts: '--strip-components=1'
 
 - name: Symlink Delta

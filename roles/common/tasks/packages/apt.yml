@@ -56,3 +56,4 @@
       - geoip-bin
       - remmina
       - binutils-x86-64-linux-gnu
+      - gnome-shell-extension-prefs

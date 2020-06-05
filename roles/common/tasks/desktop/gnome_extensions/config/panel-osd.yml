@@ -1,0 +1,13 @@
+- name: Configure Notification Position X
+  become: true
+  become_user: "{{ primary_username }}"
+  dconf:
+    key: /org/gnome/shell/extensions/panel-osd/x-pos
+    value: "92.0"
+
+- name: Configure Notification Position Y
+  become: true
+  become_user: "{{ primary_username }}"
+  dconf:
+    key: /org/gnome/shell/extensions/panel-osd/y-pos
+    value: "93.0"

@@ -16,3 +16,10 @@ apps:
   rust:
     installer:
       url: https://sh.rustup.rs
+
+desktop:
+  gnome_extensions:
+    storage:
+      install: /opt/gnome_extensions
+    ids:
+      - 708  # Panel OSD
