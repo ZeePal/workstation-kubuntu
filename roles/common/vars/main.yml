@@ -17,6 +17,11 @@ apps:
     installer:
       url: https://sh.rustup.rs
 
+  git-secrets:
+    script:
+      url: https://raw.githubusercontent.com/awslabs/git-secrets/master/git-secrets
+      install: /usr/local/bin/git-secrets
+
 desktop:
   gnome_extensions:
     storage:
