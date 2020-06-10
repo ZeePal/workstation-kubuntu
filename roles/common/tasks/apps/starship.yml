@@ -50,9 +50,10 @@
     marker: "# {mark} Starship"
     block: |
       eval "$(starship init bash)"
-      function _append_history {
+      function _pre_starship_prompt_commands {
         local STATUS=$?  # Passthrough the last exit code for starship
         history -a
+        __vte_prompt_command
         return $STATUS
       }
-      PROMPT_COMMAND="_append_history;starship_precmd"
+      PROMPT_COMMAND="_pre_starship_prompt_commands;starship_precmd"
