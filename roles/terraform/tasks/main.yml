@@ -96,8 +96,8 @@
       alias t=terraform
       alias ti="terraform init"
       alias tv="terraform validate"
-      alias tp="terraform plan"
-      alias ta="terraform apply -auto-approve"
+      alias tp="terraform plan -parallelism=1000"
+      alias ta="terraform apply -parallelism=1000 -auto-approve"
 
 
 - name: Setup Terraform plugin cache
