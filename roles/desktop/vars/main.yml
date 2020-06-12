@@ -1,0 +1,6 @@
+gnome_extensions:
+  storage:
+    install: /opt/gnome_extensions
+  ids:
+    - 708  # Panel OSD
+    - 19  # User Themes

@@ -1,0 +1,23 @@
+- name: "Checking if Gnome extension is already installed ({{ metadata.json.pk }}: {{ metadata.json.name }})"
+  stat:
+    path: "/home/{{ primary_username }}/.local/share/gnome-shell/extensions/{{ metadata.json.uuid }}"
+  register: gnome_extension
+
+- name: "Download Gnome extension ({{ metadata.json.pk }}: {{ metadata.json.name }})"
+  get_url:
+    url: "https://extensions.gnome.org{{ metadata.json.download_url }}"
+    dest: "{{ gnome_extensions['storage']['install'] }}/{{ metadata.json.pk }}.zip"
+  when: gnome_extension.stat.exists == False
+
+- name: "Install Gnome extension ({{ metadata.json.pk }}: {{ metadata.json.name }})"
+  become: true
+  become_user: "{{ primary_username }}"
+  command: "gnome-extensions install '{{ gnome_extensions['storage']['install'] }}/{{ metadata.json.pk }}.zip'"
+  when: gnome_extension.stat.exists == False
+
+# TODO: Investigate why gnome extensions arent enabled via ansible
+- name: "Enable Gnome extension ({{ metadata.json.pk }}: {{ metadata.json.name }})"
+  become: true
+  become_user: "{{ primary_username }}"
+  command: "gnome-extensions enable '{{ metadata.json.uuid }}'"
+  when: gnome_extension.stat.exists == False

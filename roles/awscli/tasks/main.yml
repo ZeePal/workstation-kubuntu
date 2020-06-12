@@ -12,11 +12,20 @@
 
 
 - name: Download AWS cli gpg key
-  get_url:
-     url:  "{{ awscli['gpg_key']['url'] }}"
-     dest: "{{ awscli['gpg_key']['storage']['raw'] }}"
-     checksum: "sha512:{{ awscli['gpg_key']['hash']['sha512'] }}"
+  shell: "curl '{{ awscli['gpg_key']['url'] }}'|sed -r -n '/-----BEGIN PGP PUBLIC KEY BLOCK-----/,/-----END PGP PUBLIC KEY BLOCK-----/p'|sed -r 's/^.*(-----BEGIN PGP PUBLIC KEY BLOCK-----)/\\1/;s/(-----END PGP PUBLIC KEY BLOCK-----).*$/\\1/' > '{{ awscli['gpg_key']['storage']['raw'] }}'"
   when: (not aws_cli_binary.stat.exists) or awscli['update']
+
+- name: Get AWS cli gpg key hash
+  stat:
+    path: "{{ awscli['gpg_key']['storage']['raw'] }}"
+    get_checksum: yes
+    checksum_algorithm: sha512
+  register: aws_cli_gpg_key_hash
+
+- name: Verify AWS cli gpg key hash
+  when: aws_cli_gpg_key_hash.stat.checksum != awscli['gpg_key']['hash']['sha512']
+  fail:
+    msg: AWS cli gpg key hash doesnt match the expected hash
 
 - name: Build AWS cli gpg keyring
   command: "gpg --no-default-keyring --keyring '{{ awscli['gpg_key']['storage']['keyring'] }}' --import '{{ awscli['gpg_key']['storage']['raw'] }}'"

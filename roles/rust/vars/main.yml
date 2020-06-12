@@ -1,0 +1,4 @@
+apps:
+  rust:
+    installer:
+      url: https://sh.rustup.rs

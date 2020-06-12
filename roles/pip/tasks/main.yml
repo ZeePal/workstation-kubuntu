@@ -1,0 +1,24 @@
+- name: Install pip packages
+  pip:
+    state: present
+    executable: pip3
+    name:
+      - yq
+      - beautifulsoup4
+      - black
+      - boto3
+      - botocore
+      - python-language-server[all]==0.31.2  # Version locked due to bug somewhere when used with atom ide-python
+      - pycryptodome
+      - requests
+      - pyyaml
+      - thefuck
+      - asciinema
+      - docker-compose
+      - cson
+      - flake8
+      - pyflakes
+      - pycodestyle
+      - cfn-lint
+      - beautysh
+      - pwntools

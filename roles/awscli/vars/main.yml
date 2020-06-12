@@ -1,9 +1,9 @@
 awscli:
   update: true
   gpg_key:
-    url: 'https://keyserver.ubuntu.com/pks/lookup?op=get&search=0xfb5db77fd5c118b80511ada8a6310acc4672475c'
+    url: 'https://docs.aws.amazon.com/cli/latest/userguide/install-cliv2-linux.html'
     hash:
-      sha512: 'b9aeac3f5be2eb4ea1a50f4bb0e87ba171363051d233f8555d61e58e264156678ebcfac7ff3a2a17aaad1e15804dd61b8b18ea515abee8d4fe8f884c32e90690'
+      sha512: '2f85eb35b7b63eb435b4437d019b0db9a742d9d9c7a13f241a64b650c51e2e1b3a88460ece4a4abeeb123cf2df96274a0045e93559c973d5874ad884feef9951'
     storage:
       raw: /opt/aws/cli/awscli.gpg.asc
       keyring: /opt/aws/cli/awscli.gpg

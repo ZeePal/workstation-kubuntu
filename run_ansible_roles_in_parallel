@@ -1,0 +1,101 @@
+#!/usr/bin/env python3
+from subprocess import Popen
+import shlex
+import os
+from time import sleep
+
+# import argparse
+
+SCRIPT_DIR = os.path.dirname(os.path.realpath(__file__))
+ROLES_DIR = f"{SCRIPT_DIR}/roles"
+SLEEP_INTERVAL = 1
+
+
+def main():
+    roles = get_roles()
+    parent_to_children, child_to_parents = build_dep_tree(roles)
+    primary_username = "paulh"
+    run_roles(parent_to_children, child_to_parents, primary_username)
+
+
+def get_roles():
+    return {d.name for d in os.scandir(ROLES_DIR) if d.is_dir()}
+
+
+def build_dep_tree(roles):
+    parent_to_children = {}
+    child_to_parents = {}
+
+    for role in roles:
+        try:
+            with open(f"{ROLES_DIR}/{role}/depends_on", "r") as f:
+                child_to_parents[role] = set(f.read().splitlines())
+        except FileNotFoundError:
+            # Missing file equiv to empty depends_on list
+            child_to_parents[role] = set()
+
+    for child, parents in child_to_parents.items():
+        for parent in parents:
+            if parent not in roles:
+                raise ValueError(
+                    f"Role '{child}' depends on non-existant role '{parent}'"
+                )
+
+            if parent in parent_to_children:
+                parent_to_children[parent].add(child)
+            else:
+                parent_to_children[parent] = set([child])
+
+    return parent_to_children, child_to_parents
+
+
+def run_roles(parent_to_children, child_to_parents, primary_username):
+    errors = []
+    running = {}
+    while child_to_parents or running or errors:  # Roles still to run
+        if not errors:
+            for child in list(child_to_parents.keys()):
+                if not child_to_parents[child]:
+                    # If not waiting for any more dependencies
+                    running[child] = start_ansible(child, primary_username)
+                    del child_to_parents[child]
+            if not running:
+                errors.append(f"Circular dependancy detected: {child_to_parents}")
+        elif not running:
+            # We have errors to summarize and waiting on nothing to finish
+            raise RuntimeError("\n".join(errors))
+        else:
+            print("=== Errors Detected ===")
+
+        sleep(SLEEP_INTERVAL)
+        print("")
+        for parent in list(running.keys()):
+            exit_code = running[parent].poll()
+            if exit_code is not None:
+                print(f"Role {parent}: Exit Code {exit_code}")
+                if exit_code != 0:
+                    errors.append(
+                        f"Role '{parent}' exited with status code: {exit_code}"
+                    )
+                del running[parent]
+                for child in parent_to_children.get(parent, []):
+                    child_to_parents[child].remove(parent)
+            else:
+                print(f"Waiting on: {parent}")
+
+
+def start_ansible(role, primary_username):
+    safe_role = shlex.quote(role)
+    safe_primary_username = shlex.quote(primary_username)
+    awk_prefixer = f'awk -v role={safe_role} \'{{print "Role "role": "$0}}\''
+    ansible_cmd = f"ansible localhost -m include_role -a name={safe_role} -e primary_username={safe_primary_username} -e ansible_python_interpreter=/usr/bin/python3"
+    print(f"Starting Role: {role}")
+    return Popen(
+        f"{ansible_cmd} 2>&1|{awk_prefixer};exit ${{PIPESTATUS[0]}}",
+        shell=True,
+        executable="/bin/bash",
+    )
+
+
+if __name__ == "__main__":
+    main()

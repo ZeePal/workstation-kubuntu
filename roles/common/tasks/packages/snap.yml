@@ -1,5 +1,0 @@
-- name: Install commonly used snap packages
-  package:
-    state: present
-    name:
-      - vlc

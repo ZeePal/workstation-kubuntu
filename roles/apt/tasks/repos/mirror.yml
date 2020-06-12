@@ -1,0 +1,6 @@
+- name: Configure apt to use a local mirror
+  replace:
+    path: /etc/apt/sources.list
+    regexp: 'http://([^/ ]+\.)?archive.ubuntu.com/ubuntu/'
+    replace: "{{ mirror }}"
+  register: apt_mirror

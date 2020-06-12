@@ -1,9 +1,0 @@
-- include: atom.yml
-- include: tilix.yml
-- include: thefuck.yml
-- include: fzf.yml
-- include: git.yml
-- include: git-secrets.yml
-- include: delta.yml
-- include: rust.yml
-- include: starship.yml

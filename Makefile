@@ -1,6 +1,5 @@
 #!/usr/bin/env make
-COMMAND := sudo ansible-playbook --connection=local -i localhost, workstation.yml \
- 	-e "primary_username=${USER}" -e ansible_python_interpreter=/usr/bin/python3
+COMMAND := sudo ./run_ansible_roles_in_parallel
 
 .DEFAULT_GOAL := check
 .PHONY: check

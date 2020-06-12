@@ -1,5 +1,0 @@
-- include: packages/main.yml
-
-- include: shell/main.yml
-- include: apps/main.yml
-- include: desktop/main.yml
