@@ -17,7 +17,6 @@
       - ide-yaml
       - intentions
       - language-ansible
-      - language-rust
       - language-terraform
       - linter
       - linter-ansible-linting
