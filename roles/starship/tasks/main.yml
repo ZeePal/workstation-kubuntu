@@ -68,30 +68,49 @@
       use_symbol_for_status = true
       [directory]
       prefix = ""
+      suffix = ""
+      [cmd_duration]
+      symbol = "⏱️ "
+      prefix = ""
 
       [aws.region_aliases]
       ap-southeast-2 = "au"
 
       [git_branch]
       symbol = "🌱"
+      prefix = ""
       [git_state]
       cherry_pick = "🍒"
       [docker_context]
       symbol = "🐋"
+      prefix = ""
       [package]
       symbol = "📦"
+      prefix = ""
 
       [aws]
       symbol = "☁️ "
+      prefix = ""
 
       [python]
       symbol = "🐍"
+      prefix = ""
       [rust]
       symbol = "🦀"
+      prefix = ""
       [go]
       symbol = "🐹"
+      prefix = ""
       [terraform]
       symbol = "💠"
+      prefix = ""
+
+      [memory_usage]
+      disabled = false
+      symbol = "🐏"
+      prefix = ""
+      show_percentage = true
+      separator = "|"
 
 - name: Setup Starship Terminal Prompt
   blockinfile:
