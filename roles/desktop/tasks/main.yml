@@ -1,5 +1,11 @@
-- include: theme.yml
-- include: dock.yml
-- include: misc.yml
-- include: powersaving.yml
+- import_tasks: theme.yml
+  become: true
+  become_user: "{{ primary_username }}"
+- import_tasks: dock.yml
+  become: true
+  become_user: "{{ primary_username }}"
+- import_tasks: misc.yml
+  become: true
+  become_user: "{{ primary_username }}"
+
 - include: gnome_extensions/main.yml

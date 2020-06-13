@@ -1,77 +1,82 @@
-- name: Create Terraform install folders
-  file:
-    state: directory
-    path: "{{ terraform['storage']['prefix'] }}/{{ terraform['version'] }}/"
-    owner: root
-    group: root
-
-- name: Download Hashicorps gpg key
-  get_url:
-     url:  "{{ hashicorp['gpg_key']['url'] }}"
-     dest: "{{ hashicorp['gpg_key']['storage']['raw'] }}"
-     checksum: "sha512:{{ hashicorp['gpg_key']['hash']['sha512'] }}"
-
-- name: Build Hashicorp gpg keyring
-  command: "gpg --no-default-keyring --keyring '{{ hashicorp['gpg_key']['storage']['keyring'] }}' --import '{{ hashicorp['gpg_key']['storage']['raw'] }}'"
-
-
-- name: Download Terraform archive
-  get_url:
-     url:  "{{ terraform['archive']['binary']['url'] }}"
-     dest: "{{ terraform['storage']['prefix'] }}/{{ terraform['version'] }}/terraform.zip"
-     checksum: "sha512:{{ terraform['archive']['binary']['hash']['sha512'] }}"
-  register: terraform_archive
-
-- name: Download Terraform archive hash signature
-  get_url:
-     url:  "{{ terraform['archive']['signature']['url'] }}"
-     dest: "{{ terraform['storage']['prefix'] }}/{{ terraform['version'] }}/SHA256SUMS.sig"
-  when: terraform_archive.changed  # To save redownloading
-
-- name: Download Terraform hash
-  get_url:
-     url:  "{{ terraform['archive']['hash']['url'] }}"
-     dest: "{{ terraform['storage']['prefix'] }}/{{ terraform['version'] }}/SHA256SUMS"
-  when: terraform_archive.changed  # To save redownloading
-
-- name: Check Terraform hash signature
-  command: "gpg --no-default-keyring --keyring '{{ hashicorp['gpg_key']['storage']['keyring'] }}' --verify '{{ terraform['storage']['prefix'] }}/{{ terraform['version'] }}/SHA256SUMS.sig' '{{ terraform['storage']['prefix'] }}/{{ terraform['version'] }}/SHA256SUMS'"
-
-- name: Get Terraform archive hash
+- name: Checking if Terraform is installed
   stat:
-    path: "{{ terraform['storage']['prefix'] }}/{{ terraform['version'] }}/terraform.zip"
-    get_checksum: yes
-    checksum_algorithm: sha256
-  register: terraform_archive_hash
-
-- name: Get signed hash
-  command: "sed -rn 's/^([0-9a-f]{64})\\s+terraform_{{ terraform['version'] }}_linux_amd64.zip\\s*/\\1/p' '{{ terraform['storage']['prefix'] }}/{{ terraform['version'] }}/SHA256SUMS'"
-  register: hash_terraform_signed
-
-- name: Verify Terraform archive hash
-  when: terraform_archive_hash.stat.checksum != hash_terraform_signed.stdout
-  fail:
-    msg: Terraform archive doesnt match the expected hash
-
-- name: Extract Terraform from archive
-  command: "unzip -u -j '{{ terraform['storage']['prefix'] }}/{{ terraform['version'] }}/terraform.zip' terraform -d '{{ terraform['storage']['prefix'] }}/{{ terraform['version'] }}/'"
-
-
-- name: Set Terraform permissions
-  file:
-    path: "{{ terraform['storage']['prefix'] }}/{{ terraform['version'] }}/terraform"
-    owner: root
-    group: root
-    mode: u=rwx,go=rx
-
-- name: Symlink Terraform Version
-  file:
-    state: link
     path: "{{ terraform['storage']['install'] }}{{ terraform['version'] }}"
-    src: "{{ terraform['storage']['prefix'] }}/{{ terraform['version'] }}/terraform"
-    owner: root
-    group: root
-    mode: u=rwx,go=rx
+  register: terraform_binary
+
+- name: Install Terraform
+  when: terraform_binary.stat.exists == False
+  block:
+    - name: Create Terraform install folders
+      file:
+        state: directory
+        path: "{{ terraform['storage']['prefix'] }}/{{ terraform['version'] }}/"
+        owner: root
+        group: root
+
+    - name: Download Hashicorps gpg key
+      get_url:
+         url:  "{{ hashicorp['gpg_key']['url'] }}"
+         dest: "{{ hashicorp['gpg_key']['storage']['raw'] }}"
+         checksum: "sha512:{{ hashicorp['gpg_key']['hash']['sha512'] }}"
+
+    - name: Build Hashicorp gpg keyring
+      command: "gpg --no-default-keyring --keyring '{{ hashicorp['gpg_key']['storage']['keyring'] }}' --import '{{ hashicorp['gpg_key']['storage']['raw'] }}'"
+
+
+    - name: Download Terraform archive
+      get_url:
+         url:  "{{ terraform['archive']['binary']['url'] }}"
+         dest: "{{ terraform['storage']['prefix'] }}/{{ terraform['version'] }}/terraform.zip"
+         checksum: "sha512:{{ terraform['archive']['binary']['hash']['sha512'] }}"
+
+    - name: Download Terraform archive hash signature
+      get_url:
+         url:  "{{ terraform['archive']['signature']['url'] }}"
+         dest: "{{ terraform['storage']['prefix'] }}/{{ terraform['version'] }}/SHA256SUMS.sig"
+
+    - name: Download Terraform hash
+      get_url:
+         url:  "{{ terraform['archive']['hash']['url'] }}"
+         dest: "{{ terraform['storage']['prefix'] }}/{{ terraform['version'] }}/SHA256SUMS"
+
+    - name: Check Terraform hash signature
+      command: "gpg --no-default-keyring --keyring '{{ hashicorp['gpg_key']['storage']['keyring'] }}' --verify '{{ terraform['storage']['prefix'] }}/{{ terraform['version'] }}/SHA256SUMS.sig' '{{ terraform['storage']['prefix'] }}/{{ terraform['version'] }}/SHA256SUMS'"
+
+    - name: Get Terraform archive hash
+      stat:
+        path: "{{ terraform['storage']['prefix'] }}/{{ terraform['version'] }}/terraform.zip"
+        get_checksum: yes
+        checksum_algorithm: sha256
+      register: terraform_archive_hash
+
+    - name: Get signed hash
+      command: "sed -rn 's/^([0-9a-f]{64})\\s+terraform_{{ terraform['version'] }}_linux_amd64.zip\\s*/\\1/p' '{{ terraform['storage']['prefix'] }}/{{ terraform['version'] }}/SHA256SUMS'"
+      register: hash_terraform_signed
+
+    - name: Verify Terraform archive hash
+      when: terraform_archive_hash.stat.checksum != hash_terraform_signed.stdout
+      fail:
+        msg: Terraform archive doesnt match the expected hash
+
+    - name: Extract Terraform from archive
+      command: "unzip -u -j '{{ terraform['storage']['prefix'] }}/{{ terraform['version'] }}/terraform.zip' terraform -d '{{ terraform['storage']['prefix'] }}/{{ terraform['version'] }}/'"
+
+    - name: Set Terraform permissions
+      file:
+        path: "{{ terraform['storage']['prefix'] }}/{{ terraform['version'] }}/terraform"
+        owner: root
+        group: root
+        mode: u=rwx,go=rx
+
+    - name: Symlink Terraform Version
+      file:
+        state: link
+        path: "{{ terraform['storage']['install'] }}{{ terraform['version'] }}"
+        src: "{{ terraform['storage']['prefix'] }}/{{ terraform['version'] }}/terraform"
+        owner: root
+        group: root
+        mode: u=rwx,go=rx
+
 
 - name: Symlink Default Terraform Version
   when: terraform['default']
@@ -98,7 +103,6 @@
       alias tv="terraform validate"
       alias tp="terraform plan -parallelism=1000"
       alias ta="terraform apply -parallelism=1000 -auto-approve"
-
 
 - name: Setup Terraform plugin cache
   blockinfile:

@@ -10,18 +10,12 @@
   changed_when: false
   register: gnome_version
 
-- name: Get Gnome extensions metadata
-  uri:
-    url: "https://extensions.gnome.org/extension-info/?shell_version={{ gnome_version.stdout }}&pk={{ item }}"
-    return_content: yes
-  loop: "{{ gnome_extensions['ids'] }}"
-  register: gnome_extension_metadata
-
 - name: Install extensions
   include_tasks: install.yml
-  loop: "{{ gnome_extension_metadata.results }}"
+  loop: "{{ gnome_extensions['ids'] }}"
   loop_control:
-    loop_var: metadata
+    loop_var: gnome_extension_id
 
-
-- include: config/main.yml
+- import_tasks: config/main.yml
+  become: true
+  become_user: "{{ primary_username }}"

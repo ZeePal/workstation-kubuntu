@@ -4,35 +4,50 @@
   register: git_secrets
 
 - name: Install Git-Secrets
-  get_url:
-    url:  "{{ apps['git-secrets']['script']['url'] }}"
-    dest: "{{ apps['git-secrets']['script']['install'] }}"
-    owner: root
-    group: root
-    mode: u=rwx,go=rx
   when: git_secrets.stat.exists == False
+  block:
+    - name: Install Git-Secrets Script
+      get_url:
+        url:  "{{ apps['git-secrets']['script']['url'] }}"
+        dest: "{{ apps['git-secrets']['script']['install'] }}"
+        owner: root
+        group: root
+        mode: u=rwx,go=rx
 
-- name: Create Git Template folder for Git-Secrets
-  file:
-    state: directory
-    path: "/home/{{ primary_username }}/.git-templates/git-secrets"
-    owner: "{{ primary_username }}"
-    group: "{{ primary_username }}"
-    mode: u=rwx,go=rx
+    - name: Create Git Template folder for Git-Secrets
+      file:
+        state: directory
+        path: "/home/{{ primary_username }}/.git-templates/git-secrets"
+        owner: "{{ primary_username }}"
+        group: "{{ primary_username }}"
+        mode: u=rwx,go=rx
 
-- name: Install Git-Secrets into Git Template Folder
-  become: true
-  become_user: "{{ primary_username }}"
-  command: git secrets --install "/home/{{ primary_username }}/.git-templates/git-secrets"
-  args:
-    creates: "/home/{{ primary_username }}/.git-templates/git-secrets/hooks/pre-commit"
+    - name: Install Git-Secrets into Git Template Folder
+      become: true
+      become_user: "{{ primary_username }}"
+      command: git secrets --install "/home/{{ primary_username }}/.git-templates/git-secrets"
+      args:
+        creates: "/home/{{ primary_username }}/.git-templates/git-secrets/hooks/pre-commit"
 
-- name: Install Git-Secrets Config
-  become: true
-  become_user: "{{ primary_username }}"
-  command: git secrets --register-aws --global
+    - name: Install Git-Secrets Config
+      become: true
+      become_user: "{{ primary_username }}"
+      command: git secrets --register-aws --global
 
-- name: Install Custom Secret Patterns
+    - name: Git to use Git-Secrets by default
+      blockinfile:
+        path: "/home/{{ primary_username }}/.gitconfig"
+        marker: "# {mark} Git-Secrets"
+        create: yes
+        owner: "{{ primary_username }}"
+        group: "{{ primary_username }}"
+        mode: u=rw,go=r
+        block: |
+          [init]
+          	templateDir = /home/{{ primary_username }}/.git-templates/git-secrets
+
+
+- name: Configure Custom Secret Patterns
   become: true
   become_user: "{{ primary_username }}"
   command: git secrets --add --global "{{ item }}"
@@ -42,15 +57,3 @@
   with_items:
     - '\-----BEGIN [A-Z ]*PRIVATE KEY-----'  # x509 Private Keys (Inc GCP Service Keys)
     - 'ya29'  # Current GCP Access Token Prefix
-
-- name: Git to use Git-Secrets by default
-  blockinfile:
-    path: "/home/{{ primary_username }}/.gitconfig"
-    marker: "# {mark} Git-Secrets"
-    create: yes
-    owner: "{{ primary_username }}"
-    group: "{{ primary_username }}"
-    mode: u=rw,go=r
-    block: |
-      [init]
-      	templateDir = /home/{{ primary_username }}/.git-templates/git-secrets

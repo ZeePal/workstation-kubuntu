@@ -1,31 +1,39 @@
-- name: Create Delta install folders
-  file:
-    state: directory
-    path: "{{ apps['delta']['storage']['prefix'] }}/"
-    owner: root
-    group: root
+- name: Checking if Delta is already installed
+  stat:
+    path: "{{ apps['delta']['storage']['prefix'] }}/delta"
+  register: delta_symlink
 
-- name: Download Delta
-  get_url:
-     url:  "{{ apps['delta']['archive']['url'] }}"
-     dest: "{{ apps['delta']['storage']['prefix'] }}/delta.tar.gz"
-     checksum: "sha512:{{ apps['delta']['archive']['hash']['sha512'] }}"
+- name: Install Delta
+  when: delta_symlink.stat.exists == False
+  block:
+    - name: Create Delta install folders
+      file:
+        state: directory
+        path: "{{ apps['delta']['storage']['prefix'] }}/"
+        owner: root
+        group: root
 
-- name: Extract Delta
-  unarchive:
-    src: "{{ apps['delta']['storage']['prefix'] }}/delta.tar.gz"
-    dest: "{{ apps['delta']['storage']['prefix'] }}/"
-    remote_src: yes
-    extra_opts: '--strip-components=1'
+    - name: Download Delta
+      get_url:
+         url:  "{{ apps['delta']['archive']['url'] }}"
+         dest: "{{ apps['delta']['storage']['prefix'] }}/delta.tar.gz"
+         checksum: "sha512:{{ apps['delta']['archive']['hash']['sha512'] }}"
 
-- name: Symlink Delta
-  file:
-    state: link
-    path: "{{ apps['delta']['storage']['install'] }}"
-    src: "{{ apps['delta']['storage']['prefix'] }}/delta"
-    owner: root
-    group: root
-    mode: u=rwx,go=rx
+    - name: Extract Delta
+      unarchive:
+        src: "{{ apps['delta']['storage']['prefix'] }}/delta.tar.gz"
+        dest: "{{ apps['delta']['storage']['prefix'] }}/"
+        remote_src: yes
+        extra_opts: '--strip-components=1'
+
+    - name: Symlink Delta
+      file:
+        state: link
+        path: "{{ apps['delta']['storage']['install'] }}"
+        src: "{{ apps['delta']['storage']['prefix'] }}/delta"
+        owner: root
+        group: root
+        mode: u=rwx,go=rx
 
 - name: Configure Delta to be used by git
   blockinfile:

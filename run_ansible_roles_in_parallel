@@ -1,100 +1,163 @@
 #!/usr/bin/env python3
+from collections import namedtuple
 from subprocess import Popen
 import shlex
 import os
-from time import sleep
-
-# import argparse
+from time import sleep, time
+import argparse
 
 SCRIPT_DIR = os.path.dirname(os.path.realpath(__file__))
 ROLES_DIR = f"{SCRIPT_DIR}/roles"
 SLEEP_INTERVAL = 1
 
+Roles = namedtuple("Roles", ["child_to_parents", "parent_to_children"])
+
 
 def main():
-    roles = get_roles()
-    parent_to_children, child_to_parents = build_dep_tree(roles)
-    primary_username = "paulh"
-    run_roles(parent_to_children, child_to_parents, primary_username)
+    args = get_args()
+    if not args.role:
+        # Build real dep tree from all roles
+        roles = build_dep_tree()
+    else:
+        # Build fake dep tree using provided roles
+        r = {role: set() for role in args.role}
+        roles = Roles(r, r)
+    run_roles(
+        roles, args.username, check=args.check, ignore_errors=args.ignore_errors,
+    )
 
 
-def get_roles():
-    return {d.name for d in os.scandir(ROLES_DIR) if d.is_dir()}
+def get_args():
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "-u",
+        "--username",
+        help="What is the username of the primary workstation user?",
+        required=True,
+        type=str,
+    )
+    parser.add_argument(
+        "role", help="Roles to execute (Default is all)", nargs="*", type=str
+    )
+    parser.add_argument(
+        "-e",
+        "--exclude",
+        help="Roles to exclude",
+        action="append",
+        default=[],
+        type=str,
+    )
+    parser.add_argument("-c", "--check", help="Check only", action="store_true")
+    parser.add_argument(
+        "-i",
+        "--ignore-errors",
+        help="Continue executing if errors occur",
+        action="store_true",
+    )
+    return parser.parse_args()
 
 
-def build_dep_tree(roles):
-    parent_to_children = {}
-    child_to_parents = {}
+def build_dep_tree():
+    child_to_parents = load_role_dependencies()
+    parent_to_children = get_role_dependants(child_to_parents)
+    return Roles(child_to_parents, parent_to_children)
 
-    for role in roles:
-        try:
-            with open(f"{ROLES_DIR}/{role}/depends_on", "r") as f:
-                child_to_parents[role] = set(f.read().splitlines())
-        except FileNotFoundError:
-            # Missing file equiv to empty depends_on list
-            child_to_parents[role] = set()
 
+def load_role_dependencies():
+    output = {}
+    for role in os.scandir(ROLES_DIR):
+        if role.is_dir():
+            try:
+                with open(f"{role.path}/depends_on", "r") as f:
+                    # 1 line = 1 dependancy, whole line is a role name
+                    output[role.name] = set(f.read().splitlines())
+            except FileNotFoundError:
+                # Missing file equiv to empty depends_on list
+                output[role.name] = set()
+    return output
+
+
+def get_role_dependants(child_to_parents):
+    output = {role: set() for role in child_to_parents.keys()}
     for child, parents in child_to_parents.items():
         for parent in parents:
-            if parent not in roles:
+            try:
+                output[parent].add(child)
+            except KeyError:
                 raise ValueError(
                     f"Role '{child}' depends on non-existant role '{parent}'"
                 )
-
-            if parent in parent_to_children:
-                parent_to_children[parent].add(child)
-            else:
-                parent_to_children[parent] = set([child])
-
-    return parent_to_children, child_to_parents
+    return output
 
 
-def run_roles(parent_to_children, child_to_parents, primary_username):
+class RoleError(Exception):
+    pass
+
+
+def run_roles(roles, user, check=False, ignore_errors=False):
     errors = []
     running = {}
-    while child_to_parents or running or errors:  # Roles still to run
-        if not errors:
-            for child in list(child_to_parents.keys()):
-                if not child_to_parents[child]:
-                    # If not waiting for any more dependencies
-                    running[child] = start_ansible(child, primary_username)
-                    del child_to_parents[child]
-            if not running:
-                errors.append(f"Circular dependancy detected: {child_to_parents}")
-        elif not running:
-            # We have errors to summarize and waiting on nothing to finish
-            raise RuntimeError("\n".join(errors))
+    while running or (roles.child_to_parents and (not errors or ignore_errors)):
+        if not errors or ignore_errors:
+            start_ready_roles(running, roles, user, check)
         else:
-            print("=== Errors Detected ===")
+            print("\n\n##### Errors Detected, not starting any more roles ######\n\n")
 
+        print(f"Waiting on: {', '.join(running.keys())}")
         sleep(SLEEP_INTERVAL)
-        print("")
-        for parent in list(running.keys()):
-            exit_code = running[parent].poll()
-            if exit_code is not None:
-                print(f"Role {parent}: Exit Code {exit_code}")
-                if exit_code != 0:
-                    errors.append(
-                        f"Role '{parent}' exited with status code: {exit_code}"
-                    )
-                del running[parent]
-                for child in parent_to_children.get(parent, []):
-                    child_to_parents[child].remove(parent)
-            else:
-                print(f"Waiting on: {parent}")
+        check_running_roles(running, roles, errors)
+    if errors and not ignore_errors:
+        raise RoleError(", ".join(errors))
 
 
-def start_ansible(role, primary_username):
+def start_ready_roles(running, roles, primary_username, check):
+    for child in list(roles.child_to_parents.keys()):
+        if not roles.child_to_parents[child]:
+            # If no dependancys left
+            running[child] = {
+                "proc": start_ansible(child, primary_username, check=check),
+                "start": time(),
+            }
+            del roles.child_to_parents[child]
+    if not running:
+        raise RoleError(f"Circular dependancy detected: {roles.child_to_parents}")
+
+
+def check_running_roles(running, roles, errors):
+    for parent in list(running.keys()):
+        exit_code = running[parent]["proc"].poll()
+        if exit_code is not None:
+            print(f"Role {parent}: Elapsed {time()-running[parent]['start']}")
+            print(f"Role {parent}: Exit Code {exit_code}")
+            if exit_code != 0:
+                errors.append(f"Role '{parent}' exited with status code: {exit_code}")
+            del running[parent]
+            for child in roles.parent_to_children.get(parent, []):
+                roles.child_to_parents[child].remove(parent)
+
+
+def start_ansible(role, primary_username, check=False):
+    print(f"Starting Role: {role}")
     safe_role = shlex.quote(role)
     safe_primary_username = shlex.quote(primary_username)
-    awk_prefixer = f'awk -v role={safe_role} \'{{print "Role "role": "$0}}\''
-    ansible_cmd = f"ansible localhost -m include_role -a name={safe_role} -e primary_username={safe_primary_username} -e ansible_python_interpreter=/usr/bin/python3"
-    print(f"Starting Role: {role}")
-    return Popen(
-        f"{ansible_cmd} 2>&1|{awk_prefixer};exit ${{PIPESTATUS[0]}}",
-        shell=True,
-        executable="/bin/bash",
+
+    cmd = ["ansible localhost"]
+    if check:
+        cmd.append("-CD")
+    cmd.extend(
+        [
+            "-m include_role",
+            f"-a name={safe_role}",
+            f"-e primary_username={safe_primary_username}",
+            "-e ansible_python_interpreter=/usr/bin/python3",
+            # Add output prefix's
+            "2>&1|awk -W interactive",
+            f"-v role={safe_role}",
+            '\'{print strftime("%Y-%m-%d %H:%M:%S")": "role": "$0}\'',
+            ";exit ${PIPESTATUS[0]}",  # Pass correct exit code back
+        ]
     )
+    return Popen(" ".join(cmd), shell=True, executable="/bin/bash", cwd=SCRIPT_DIR)
 
 
 if __name__ == "__main__":

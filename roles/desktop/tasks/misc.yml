@@ -1,18 +1,12 @@
 - name: Set chrome as default browser
-  become: true
-  become_user: "{{ primary_username }}"
   command: xdg-settings set default-web-browser google-chrome.desktop
 
 - name: Prevent media insertion from auto running
-  become: true
-  become_user: "{{ primary_username }}"
   dconf:
     key: /org/gnome/desktop/media-handling/autorun-never
     value: 'true'
 
 - name: Always show battery percentage
-  become: true
-  become_user: "{{ primary_username }}"
   dconf:
     key: /org/gnome/desktop/interface/show-battery-percentage
     value: 'true'
