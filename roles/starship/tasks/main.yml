@@ -13,11 +13,61 @@
     mode: u=rwx,g=rx,o=
     content: |
       add_newline = false
+
+      # Moved directory to second last (from default order)
+      prompt_order = [
+        "username",
+        "hostname",
+        "singularity",
+        "kubernetes",
+        "git_branch",
+        "git_commit",
+        "git_state",
+        "git_status",
+        "hg_branch",
+        "docker_context",
+        "package",
+        "dotnet",
+        "elixir",
+        "elm",
+        "erlang",
+        "golang",
+        "haskell",
+        "java",
+        "julia",
+        "nim",
+        "nodejs",
+        "ocaml",
+        "php",
+        "purescript",
+        "python",
+        "ruby",
+        "rust",
+        "terraform",
+        "zig",
+        "nix_shell",
+        "conda",
+        "memory_usage",
+        "aws",
+        "env_var",
+        "crystal",
+        "cmd_duration",
+        "custom",
+        "line_break",
+        "jobs",
+        "battery",
+        "time",
+        "directory",
+        "character",
+      ]
+
       [line_break]
       disabled = true
 
       [character]
       use_symbol_for_status = true
+      [directory]
+      prefix = ""
 
       [aws.region_aliases]
       ap-southeast-2 = "au"
