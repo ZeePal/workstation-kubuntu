@@ -1,0 +1,7 @@
+apps:
+  rust-analyzer:
+    binary:
+      url: 'https://github.com/rust-analyzer/rust-analyzer/releases/download/2020-06-08/rust-analyzer-linux'
+      hash:
+        sha512: '0e8060de26528263e06f6e753457f919c832e9cea247fbdfcb15ce6344a4dea9798ebc1dd38b81dd2a9065c58964f169c4d46838b425c4b46354e2e25c612412'
+      install: /usr/local/bin/rust-analyzer

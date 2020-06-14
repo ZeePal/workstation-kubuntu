@@ -1,0 +1,6 @@
+- name: Install Rust-Analyzer
+  get_url:
+     url:  "{{ apps['rust-analyzer']['binary']['url'] }}"
+     dest: "{{ apps['rust-analyzer']['binary']['install'] }}"
+     checksum: "sha512:{{ apps['rust-analyzer']['binary']['hash']['sha512'] }}"
+     mode: u=rwx,go=rx

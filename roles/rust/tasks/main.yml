@@ -2,7 +2,7 @@
 - name: Installing Rust
   become: true
   become_user: "{{ primary_username }}"
-  shell: curl --proto '=https' --tlsv1.2 -sSf '{{ apps['rust']['installer']['url'] }}' | sh -s -- -y -c rls
+  shell: curl --proto '=https' --tlsv1.2 -sSf '{{ apps['rust']['installer']['url'] }}' | sh -s -- -y -c rls rust-src
   args:
     creates: "/home/{{ primary_username }}/.cargo/bin/rustc"
 
