@@ -33,7 +33,7 @@
       - powertop
       - tlp
       - tlp-rdw
-      - atom
+      - atom=1.46.0  # Version locked due bug in Rust Syntax Highlighting: https://github.com/atom/atom/issues/20828
       - gpg
       - golang-go
       - uidmap
@@ -62,3 +62,10 @@
       - gnome-tweaks
       - libssl-dev
       - vlc
+
+- name: Lock required package versions
+  dpkg_selections:
+    name: "{{ item }}"
+    selection: hold
+  with_items:
+    - atom
