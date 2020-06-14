@@ -9,3 +9,5 @@
   become_user: "{{ primary_username }}"
 
 - include: gnome_extensions/main.yml
+
+- include: fix_virtualbox_icon.yml
