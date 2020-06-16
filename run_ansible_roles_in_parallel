@@ -3,14 +3,21 @@ from collections import namedtuple
 from subprocess import Popen
 import shlex
 import os
-from time import sleep, time
+from time import time
 import argparse
+import queue
+from signal import signal, SIGCHLD
 
 SCRIPT_DIR = os.path.dirname(os.path.realpath(__file__))
 ROLES_DIR = f"{SCRIPT_DIR}/roles"
-SLEEP_INTERVAL = 1
+SLEEP_INTERVAL = 10
 
 Roles = namedtuple("Roles", ["child_to_parents", "parent_to_children"])
+
+
+# Catch all SIGCHLD's and store the related child details
+SIGCHLD_QUEUE = queue.Queue()
+signal(SIGCHLD, lambda x, y: SIGCHLD_QUEUE.put(os.waitpid(-1, os.WNOHANG)))
 
 
 def main():
@@ -103,37 +110,65 @@ def run_roles(roles, user, check=False, ignore_errors=False):
         else:
             print("\n\n##### Errors Detected, not starting any more roles ######\n\n")
 
-        print(f"Waiting on: {', '.join(running.keys())}")
-        sleep(SLEEP_INTERVAL)
-        check_running_roles(running, roles, errors)
+        wait_for_role_to_finish(running, roles, errors)
     if errors and not ignore_errors:
         raise RoleError(", ".join(errors))
+
+
+def wait_for_role_to_finish(running, roles, errors):
+    waiting_on = ", ".join([proc["role"] for proc in running.values()])
+    print(f"Waiting on: {waiting_on}")
+    try:
+        # Wait for a SIGCHLD
+        pid, exit_code = SIGCHLD_QUEUE.get(timeout=SLEEP_INTERVAL)
+        if pid == 0:  # Failed to get which child died
+            poll_running_roles(running, roles, errors)  # Check them all
+            return
+
+        process_finished_role(running, roles, pid, exit_code, errors)
+        try:
+            # Empty the queue incase we received more signals
+            while True:
+                pid, exit_code = SIGCHLD_QUEUE.get_nowait()
+                process_finished_role(running, roles, pid, exit_code, errors)
+        except queue.Empty:
+            pass  # Queue has been emptied
+    except queue.Empty:
+        # Timeout used as a sleep. Safety check incase a signal was missed.
+        poll_running_roles(running, roles, errors)  # Check them all
 
 
 def start_ready_roles(running, roles, primary_username, check):
     for child in list(roles.child_to_parents.keys()):
         if not roles.child_to_parents[child]:
             # If no dependancys left
-            running[child] = {
-                "proc": start_ansible(child, primary_username, check=check),
-                "start": time(),
-            }
+            proc = start_ansible(child, primary_username, check=check)
+            running[proc.pid] = {"role": child, "proc": proc, "start": time()}
             del roles.child_to_parents[child]
     if not running:
         raise RoleError(f"Circular dependancy detected: {roles.child_to_parents}")
 
 
-def check_running_roles(running, roles, errors):
-    for parent in list(running.keys()):
-        exit_code = running[parent]["proc"].poll()
+def process_finished_role(running, roles, pid, exit_code, errors):
+    proc = running[pid]
+    parent = proc["role"]
+    print(f"Role {parent}: Elapsed {time()-proc['start']}")
+    print(f"Role {parent}: Exit Code {exit_code}")
+
+    if exit_code != 0:
+        errors.append(f"Role '{parent}' exited with status code: {exit_code}")
+
+    for child in roles.parent_to_children.get(parent, []):
+        roles.child_to_parents[child].remove(parent)
+    del running[pid]
+
+
+# Failsafe function
+def poll_running_roles(running, roles, errors):
+    for pid in list(running.keys()):
+        exit_code = running[pid]["proc"].poll()
         if exit_code is not None:
-            print(f"Role {parent}: Elapsed {time()-running[parent]['start']}")
-            print(f"Role {parent}: Exit Code {exit_code}")
-            if exit_code != 0:
-                errors.append(f"Role '{parent}' exited with status code: {exit_code}")
-            del running[parent]
-            for child in roles.parent_to_children.get(parent, []):
-                roles.child_to_parents[child].remove(parent)
+            process_finished_role(running, roles, pid, exit_code, errors)
 
 
 def start_ansible(role, primary_username, check=False):
