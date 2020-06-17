@@ -30,6 +30,18 @@
       - script
       - terraform-fmt
       - terraform-lookup
+      - highlight-selected
+      - todo-show
+      - minimap
+      - minimap-selection
+      - minimap-cursorline
+      - minimap-find-and-replace
+      - minimap-codeglance
+      - minimap-highlight-selected
+      - minimap-linter
+      - git-blame
+      - git-plus
+      - language-ini
 
 
 - name: Hide ide-yamls hello message
