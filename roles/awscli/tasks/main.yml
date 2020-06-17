@@ -58,6 +58,15 @@
         chdir: "{{ awscli['storage']['prefix'] }}/"
 
 
+- name: Restrict access to AWS secrets
+  file:
+    path: "/home/{{ primary_username }}/.aws"
+    recurse: yes
+    state: directory
+    owner: "{{ primary_username }}"
+    group: "{{ primary_username }}"
+    mode: u=rwX,go=
+
 - name: Setup AWS cli aliases
   blockinfile:
     path: "/home/{{ primary_username }}/.bash_aliases"
