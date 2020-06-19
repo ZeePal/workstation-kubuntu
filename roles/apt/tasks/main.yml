@@ -63,6 +63,7 @@
       - libssl-dev
       - vlc
       - nomacs
+      - ripgrep
 
 - name: Lock required package versions
   dpkg_selections:

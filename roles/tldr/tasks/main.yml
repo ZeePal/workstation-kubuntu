@@ -1,0 +1,13 @@
+- name: Install tldr (tealdeer)
+  become: true
+  become_user: "{{ primary_username }}"
+  command: "'/home/{{ primary_username }}/.cargo/bin/cargo' install tealdeer"
+  args:
+    creates: "/home/{{ primary_username }}/.cargo/bin/tldr"
+
+- name: Update tealdeer cache
+  become: true
+  become_user: "{{ primary_username }}"
+  command: "/home/{{ primary_username }}/.cargo/bin/tldr --update"
+  args:
+    creates: "/home/{{ primary_username }}/.cache/tealdeer/tldr-master"

@@ -9,3 +9,4 @@
     block: |
       alias o=xdg-open
       alias open=xdg-open
+      alias rga='rg -uuu'
