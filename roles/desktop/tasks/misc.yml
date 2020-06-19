@@ -10,3 +10,9 @@
   dconf:
     key: /org/gnome/desktop/interface/show-battery-percentage
     value: 'true'
+
+- name: Change nomacs to be default image viewer
+  replace:
+    path: "/home/{{ primary_username }}/.config/mimeapps.list"
+    regexp: '^image/([^=]+)=.*$'
+    replace: 'image/\1=nomacs.desktop'

@@ -62,6 +62,7 @@
       - gnome-tweaks
       - libssl-dev
       - vlc
+      - nomacs
 
 - name: Lock required package versions
   dpkg_selections:
