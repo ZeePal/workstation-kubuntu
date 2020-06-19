@@ -64,6 +64,7 @@
       - vlc
       - nomacs
       - ripgrep
+      - htop
 
 - name: Lock required package versions
   dpkg_selections:
