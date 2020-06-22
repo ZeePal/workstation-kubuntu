@@ -65,6 +65,7 @@
       - nomacs
       - ripgrep
       - htop
+      - sqlformat
 
 - name: Lock required package versions
   dpkg_selections:
