@@ -14,7 +14,6 @@
       - file-icons
       - ide-python
       - ide-rust
-      - ide-yaml
       - intentions
       - language-ansible
       - language-terraform
@@ -42,15 +41,8 @@
       - git-blame
       - git-plus
       - language-ini
+      - linter-js-yaml
 
-
-- name: Hide ide-yamls hello message
-  copy:  # Used to create a once off empty file, no updating modified date!
-    content: ""
-    dest: "/home/{{ primary_username }}/.atom/packages/ide-yaml/REQUIREMENTS_CHECK_PASSED"
-    force: no
-    owner: "{{ primary_username }}"
-    group: "{{ primary_username }}"
 
 - name: Fix atom-beautify using beautysh
   replace:
@@ -105,3 +97,24 @@
         value: true
       - path: '*.linter-terraform-syntax.newVersion'
         value: true
+      - path: '*.linter-js-yaml.customTags'
+        value:
+          - "!Base64"
+          - "!Cidr sequence"
+          - "!FindInMap sequence"
+          - "!GetAtt"
+          - "!GetAZs"
+          - "!ImportValue"
+          - "!Join sequence"
+          - "!Select sequence"
+          - "!Split sequence"
+          - "!Sub sequence"
+          - "!Sub scalar"
+          - "!Transform sequence"
+          - "!Ref"
+          - "!And sequence"
+          - "!Equals sequence"
+          - "!If sequence"
+          - "!Not sequence"
+          - "!Or sequence"
+          - "!Condition"
