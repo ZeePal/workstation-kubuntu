@@ -66,6 +66,7 @@
       - ripgrep
       - htop
       - sqlformat
+      - traceroute
 
 - name: Lock required package versions
   dpkg_selections:
