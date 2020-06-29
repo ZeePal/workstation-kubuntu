@@ -67,6 +67,7 @@
       - htop
       - sqlformat
       - traceroute
+      - oathtool
 
 - name: Lock required package versions
   dpkg_selections:

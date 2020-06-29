@@ -12,3 +12,5 @@
       alias rga='rg -uuu'
       alias l='exa'
       alias ll='exa -al'
+      alias pw='pwgen -cnys1 32 1'
+      alias pws='pwgen -cns1 32 1'
