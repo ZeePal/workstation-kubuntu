@@ -68,6 +68,7 @@
       - sqlformat
       - traceroute
       - oathtool
+      - screenfetch
 
 - name: Lock required package versions
   dpkg_selections:
