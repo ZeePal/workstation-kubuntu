@@ -1,7 +1,15 @@
+- name: Read favourite dock icons
+  dconf:
+    key: /org/gnome/shell/favorite-apps
+    state: read
+  register: dock_favorites
+
 - name: Configure favourite dock icons
   dconf:
     key: /org/gnome/shell/favorite-apps
-    value: "['org.gnome.Nautilus.desktop', 'google-chrome.desktop', 'com.gexperts.Tilix.desktop', 'slack_slack.desktop', 'atom.desktop']"
+    value: "['org.gnome.Nautilus.desktop', 'google-chrome.desktop', 'com.gexperts.Tilix.desktop', 'atom.desktop', 'discord_discord.desktop', 'telegram-desktop_telegram-desktop.desktop']"
+  when: '"google-chrome" not in dock_favorites.value'
+
 
 - name: Autohide the dock
   dconf:
