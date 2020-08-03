@@ -1,5 +1,6 @@
 - include: mirror.yml
 - include: google-chrome.yml
 - include: atom.yml
+- include: signal.yml
 
 - include: refresh_cache.yml

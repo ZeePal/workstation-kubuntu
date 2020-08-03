@@ -1,4 +1,4 @@
 - name: Refresh the apt package cache
   apt:
     update_cache: yes
-  when: apt_repo_atom.changed or apt_repo_googlechrome.changed or apt_mirror.changed
+  when: apt_repo_atom.changed or apt_repo_googlechrome.changed or apt_mirror.changed or apt_repo_signal

@@ -1,0 +1,12 @@
+- name: Install the Signal apt repository key
+  apt_key:
+    state: present
+    id: DBA36B5181D0C816F630E889D980A17457F6FB06
+    url: https://updates.signal.org/desktop/apt/keys.asc
+
+- name: Install the Signal apt repository
+  apt_repository:
+    state: present
+    repo: deb [signed-by=DBA36B5181D0C816F630E889D980A17457F6FB06 arch=amd64] https://updates.signal.org/desktop/apt xenial main
+    update_cache: no
+  register: apt_repo_signal

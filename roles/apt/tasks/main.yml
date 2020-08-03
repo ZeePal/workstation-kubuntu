@@ -69,6 +69,7 @@
       - traceroute
       - oathtool
       - screenfetch
+      - signal-desktop
 
 - name: Lock required package versions
   dpkg_selections:

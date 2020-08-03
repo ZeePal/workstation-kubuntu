@@ -7,7 +7,7 @@
 - name: Configure favourite dock icons
   dconf:
     key: /org/gnome/shell/favorite-apps
-    value: "['org.gnome.Nautilus.desktop', 'google-chrome.desktop', 'com.gexperts.Tilix.desktop', 'atom.desktop', 'discord_discord.desktop', 'telegram-desktop_telegram-desktop.desktop']"
+    value: "['org.gnome.Nautilus.desktop', 'google-chrome.desktop', 'com.gexperts.Tilix.desktop', 'atom.desktop', 'signal-desktop.desktop', 'discord_discord.desktop', 'telegram-desktop_telegram-desktop.desktop']"
   when: '"google-chrome" not in dock_favorites.value'
 
 
