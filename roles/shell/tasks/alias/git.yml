@@ -16,3 +16,4 @@
       alias ga="git add ."
       alias gc="git commit -m"
       alias gp="git push"
+      alias gf="git pull --ff-only"
