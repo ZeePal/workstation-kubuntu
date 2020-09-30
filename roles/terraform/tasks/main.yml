@@ -106,6 +106,14 @@
       alias ta="terraform apply -parallelism=1000 -auto-approve"
       alias tg="terraform graph -draw-cycles|dot -Tsvg > /tmp/graph.svg && xdg-open /tmp/graph.svg"
 
+- name: Terraforms plugin cache folder
+  file:
+    state: directory
+    path: "/home/{{ primary_username }}/.terraform.d/plugin-cache/"
+    owner: "{{ primary_username }}"
+    group: "{{ primary_username }}"
+    mode: u=rwx,g=rx,o=rx
+
 - name: Setup Terraform plugin cache
   blockinfile:
     dest: "/home/{{ primary_username }}/.bashrc"
