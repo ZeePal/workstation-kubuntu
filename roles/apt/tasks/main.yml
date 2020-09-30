@@ -70,6 +70,7 @@
       - oathtool
       - screenfetch
       - signal-desktop
+      - net-tools
 
 - name: Lock required package versions
   dpkg_selections:
