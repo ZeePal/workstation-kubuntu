@@ -71,6 +71,7 @@
       - screenfetch
       - signal-desktop
       - net-tools
+      - pv
 
 - name: Lock required package versions
   dpkg_selections:
