@@ -15,100 +15,106 @@
       add_newline = false
 
       # Moved directory to second last (from default order)
-      prompt_order = [
-        "username",
-        "hostname",
-        "singularity",
-        "kubernetes",
-        "git_branch",
-        "git_commit",
-        "git_state",
-        "git_status",
-        "hg_branch",
-        "docker_context",
-        "package",
-        "dotnet",
-        "elixir",
-        "elm",
-        "erlang",
-        "golang",
-        "haskell",
-        "java",
-        "julia",
-        "nim",
-        "nodejs",
-        "ocaml",
-        "php",
-        "purescript",
-        "python",
-        "ruby",
-        "rust",
-        "terraform",
-        "zig",
-        "nix_shell",
-        "conda",
-        "memory_usage",
-        "aws",
-        "env_var",
-        "crystal",
-        "cmd_duration",
-        "custom",
-        "line_break",
-        "jobs",
-        "battery",
-        "time",
-        "directory",
-        "character",
-      ]
+      format = """
+      $username\
+      $hostname\
+      $shlvl\
+      $kubernetes\
+      $git_branch\
+      $git_commit\
+      $git_state\
+      $git_status\
+      $hg_branch\
+      $docker_context\
+      $package\
+      $cmake\
+      $dart\
+      $dotnet\
+      $elixir\
+      $elm\
+      $erlang\
+      $golang\
+      $helm\
+      $java\
+      $julia\
+      $nim\
+      $nodejs\
+      $ocaml\
+      $perl\
+      $php\
+      $purescript\
+      $python\
+      $ruby\
+      $rust\
+      $swift\
+      $terraform\
+      $zig\
+      $nix_shell\
+      $conda\
+      $memory_usage\
+      $aws\
+      $gcloud\
+      $env_var\
+      $crystal\
+      $cmd_duration\
+      $custom\
+      $line_break\
+      $jobs\
+      $battery\
+      $time\
+      $status\
+      $directory\
+      $character"""
 
       [line_break]
       disabled = true
 
-      [character]
-      use_symbol_for_status = true
       [directory]
-      prefix = ""
-      suffix = ""
+      format = "[$path]($style)[$read_only]($read_only_style)"
       [cmd_duration]
-      symbol = "⏱️ "
-      prefix = ""
+      format = "⏱️ [$duration]($style) "
 
+      [gcloud.region_aliases]
+      australia-southeast1 = "au"
       [aws.region_aliases]
       ap-southeast-2 = "au"
 
       [git_branch]
       symbol = "🌱"
-      prefix = ""
+      format = "[$symbol$branch]($style) "
       [git_state]
       cherry_pick = "🍒"
       [docker_context]
       symbol = "🐋"
-      prefix = ""
+      format = "[$symbol$context]($style) "
       [package]
       symbol = "📦"
-      prefix = ""
+      format = "[$symbol$version]($style) "
 
+      [gcloud]
+      symbol = "🇬️ "
+      format = '[$symbol$active(\($region\))]($style) '
       [aws]
       symbol = "☁️ "
-      prefix = ""
+      format = '[$symbol$profile(\($region\))]($style) '
 
       [python]
       symbol = "🐍"
-      prefix = ""
+      format = '[${symbol}${pyenv_prefix}${version}( \($virtualenv\))]($style) '
       [rust]
       symbol = "🦀"
-      prefix = ""
+      format = "[$symbol$version]($style) "
       [go]
       symbol = "🐹"
-      prefix = ""
+      format = "[$symbol$version]($style) "
       [terraform]
       symbol = "💠"
-      prefix = ""
+      format = "[$symbol$workspace]($style) "
 
       [memory_usage]
       disabled = false
       symbol = "🐏"
-      prefix = ""
+      format = "$symbol [${ram}(|${swap})]($style) "
       show_percentage = true
       separator = "|"
 
