@@ -16,7 +16,7 @@
     key: /org/gnome/shell/extensions/dash-to-dock/dock-fixed
     value: 'false'
 
-- name: Configure autohide dock pressure
+- name: Configure autohide dock to not need pressure
   dconf:
-    key: /org/gnome/shell/extensions/dash-to-dock/pressure-threshold
-    value: '1.0'
+    key: /org/gnome/shell/extensions/dash-to-dock/require-pressure-to-show 
+    value: 'false'
