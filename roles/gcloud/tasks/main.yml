@@ -1,13 +1,13 @@
 - name: Install the Google Cloud apt repository key
   apt_key:
     state: present
-    id: 54A647F9048D5688D7DA2ABE6A030B21BA07F4FB
+    id: 7F92E05B31093BEF5A3C2D38FEEA9169307EA071
     url: https://packages.cloud.google.com/apt/doc/apt-key.gpg
 
 - name: Install the Google Cloud SDK apt repository
   apt_repository:
     state: present
-    repo: deb [signed-by=54A647F9048D5688D7DA2ABE6A030B21BA07F4FB] http://packages.cloud.google.com/apt cloud-sdk main
+    repo: deb [signed-by=7F92E05B31093BEF5A3C2D38FEEA9169307EA071] http://packages.cloud.google.com/apt cloud-sdk main
     filename: google-cloud-sdk
     update_cache: yes
 
