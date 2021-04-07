@@ -33,7 +33,7 @@
       - powertop
       - tlp
       - tlp-rdw
-      - atom=1.46.0  # Version locked due bug in Rust Syntax Highlighting: https://github.com/atom/atom/issues/20828
+      - atom
       - gpg
       - golang-go
       - uidmap
