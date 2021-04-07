@@ -28,7 +28,6 @@
       - python-indent
       - script
       - terraform-fmt
-      - terraform-lookup
       - highlight-selected
       - todo-show
       - minimap
