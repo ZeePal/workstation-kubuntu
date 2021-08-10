@@ -41,6 +41,7 @@
       - git-plus
       - language-ini
       - linter-js-yaml
+      - tabnine
 
 
 - name: Fix atom-beautify using beautysh
