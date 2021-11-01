@@ -104,7 +104,7 @@
       [rust]
       symbol = "🦀"
       format = "[$symbol$version]($style) "
-      [go]
+      [golang]
       symbol = "🐹"
       format = "[$symbol$version]($style) "
       [terraform]
@@ -114,9 +114,7 @@
       [memory_usage]
       disabled = false
       symbol = "🐏"
-      format = "$symbol [${ram}(|${swap})]($style) "
-      show_percentage = true
-      separator = "|"
+      format = "$symbol [${ram_pct}]($style) "
 
 - name: Setup Starship Terminal Prompt
   blockinfile:
