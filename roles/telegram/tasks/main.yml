@@ -1,4 +1,0 @@
-- name: Install Telegram
-  snap:
-    state: present
-    name: telegram-desktop
