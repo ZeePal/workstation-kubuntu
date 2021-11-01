@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
+# Startup application command for testing:
+## gnome-terminal -- /bin/bash -c '/mnt/test/dev_bootstrap_install;exec bash -i'
 
 GIT_FOLDER=~/git
 REPO=/mnt/test
