@@ -1,24 +1,24 @@
 hashicorp:
   gpg_key:
-    url: 'https://keybase.io/hashicorp/pgp_keys.asc?fingerprint=91a6e7f85d05c65630bef18951852d87348ffc4c'
+    url: 'https://keybase.io/hashicorp/pgp_keys.asc?fingerprint=C874011F0AB405110D02105534365D9472D7468F'
     hash:
-      sha512: 'e1e30582cc8f2588523f85da241b4243d8be01f1f90644f93ba90046304cce57aafaa786d4a19305566e199664c181a31af2fc8cdd55358f2e99fa84e23edf19'
+      sha512: '05376f3c9840c11a237bc862b7f652db110bef1529b20824049436a30d51810c7cf52cd64451210cced545e0dbc367be386996263fce71aa87f69769790c57d4'
     storage:
       raw: /opt/terraform/hashicorp.gpg.asc
       keyring: /opt/terraform/hashicorp.gpg
 
 terraform:
-  version: 0.13.3
+  version: 1.0.10
   default: true
   storage:
     prefix: /opt/terraform
     install: /usr/local/bin/terraform
   archive:
     binary:
-      url: 'https://releases.hashicorp.com/terraform/0.13.3/terraform_0.13.3_linux_amd64.zip'
+      url: 'https://releases.hashicorp.com/terraform/1.0.10/terraform_1.0.10_linux_amd64.zip'
       hash:
-        sha512: 'fa06279f33ca7e200cfcfbb3e795c43d5d48445e9ab49b1856e873284ed956ea76591be3651e36fedd404173e0b67cc8139a7d5712864f66cc59ff906d0578a3'
+        sha512: 'e1cb1b350629d4329c5b2e9ec1d0dfa38f96e71da1cb779e1f2dcf71d96f99d768a11103b835dfa1b51c3d65ac1195a2cd5f78bb73a4c8253c9accc8d4ffeca8'
     hash:
-      url: 'https://releases.hashicorp.com/terraform/0.13.3/terraform_0.13.3_SHA256SUMS'
+      url: 'https://releases.hashicorp.com/terraform/1.0.10/terraform_1.0.10_SHA256SUMS'
     signature:
-      url: 'https://releases.hashicorp.com/terraform/0.13.3/terraform_0.13.3_SHA256SUMS.sig'
+      url: 'https://releases.hashicorp.com/terraform/1.0.10/terraform_1.0.10_SHA256SUMS.sig'
