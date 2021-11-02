@@ -16,7 +16,8 @@
     key: /org/gnome/shell/extensions/dash-to-dock/dock-fixed
     value: 'false'
 
-- name: Configure autohide dock to not need pressure
-  dconf:
-    key: /org/gnome/shell/extensions/dash-to-dock/require-pressure-to-show 
-    value: 'false'
+# TODO: Toggle on when in virtualbox
+# - name: Configure autohide dock to not need pressure
+#   dconf:
+#     key: /org/gnome/shell/extensions/dash-to-dock/require-pressure-to-show
+#     value: 'false'
