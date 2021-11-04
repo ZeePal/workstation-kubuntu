@@ -1,6 +1,6 @@
 awscli:
   gpg_key:
-    url: 'https://docs.aws.amazon.com/cli/latest/userguide/install-cliv2-linux.html'
+    url: 'https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html'
     hash:
       sha512: '2f85eb35b7b63eb435b4437d019b0db9a742d9d9c7a13f241a64b650c51e2e1b3a88460ece4a4abeeb123cf2df96274a0045e93559c973d5874ad884feef9951'
     storage:
