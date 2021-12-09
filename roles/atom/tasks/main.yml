@@ -42,6 +42,13 @@
       - language-ini
       - linter-js-yaml
       - tabnine
+      - atom-ide-markdown-service
+      - atom-ide-datatip
+      - atom-ide-signature-help
+      - atom-ide-hyperclick
+      - atom-ide-definitions
+      - atom-ide-outline
+      - atom-ide-code-format
 
 
 - name: Fix atom-beautify using beautysh
@@ -80,12 +87,33 @@
         value: false
       - path: '*.ide-python.pylsPlugins.flake8.enabled'
         value: true
+      - path: '*.ide-python.pylsPlugins.flake8.ignore'
+        value:
+          - E121
+          - E123
+          - E126
+          - E226
+          - E24
+          - E704
+          - W503
+          - W504
+          - E501
       - path: '*.ide-python.pylsPlugins.flake8.maxLineLength'
         value: 88
       - path: '*.ide-python.pylsPlugins.jedi_definition.follow_builtin_imports'
         value: true
       - path: '*.ide-python.pylsPlugins.jedi_definition.follow_imports'
         value: true
+      - path: '*.ide-python.pylsPlugins.pycodestyle.ignore'
+        value:
+          - E121
+          - E123
+          - E126
+          - E226
+          - E24
+          - E704
+          - W503
+          - E501
       - path: '*.ide-python.pylsPlugins.pycodestyle.maxLineLength'
         value: 88
       - path: '*.ide-python.pylsPlugins.rope_completion.enabled'
@@ -124,6 +152,9 @@
 
       - path: '*.linter-terraform-syntax.newVersion'
         value: true
+
+      - path: '*.linter-ui-default.showPanel'
+        value: false
 
       - path: '*.linter-js-yaml.customTags'
         value:
