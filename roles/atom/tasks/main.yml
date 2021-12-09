@@ -6,7 +6,6 @@
       - atom-ide-base
       - atom-beautify
       - atom-cfn-lint
-      - atom-ide-ui
       - atom-material-syntax
       - atom-material-ui
       - build-cargo

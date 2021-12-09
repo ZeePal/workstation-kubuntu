@@ -8,7 +8,7 @@
       - black
       - boto3
       - botocore
-      - python-language-server[all]==0.31.2  # Version locked due to bug somewhere when used with atom ide-python
+      - python-language-server[all]
       - pycryptodome
       - requests
       - pyyaml
