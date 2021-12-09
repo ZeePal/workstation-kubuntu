@@ -8,7 +8,7 @@
       - black
       - boto3
       - botocore
-      - python-language-server[all]
+      - python-lsp-server[all]
       - pycryptodome
       - requests
       - pyyaml
