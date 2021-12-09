@@ -59,44 +59,72 @@
     changes:
       - path: '*.welcome.showOnStartup'
         value: false
+
       - path: '*.core.telemetryConsent'
         value: limited
       - path: '*.core.autoHideMenuBar'
         value: true
       - path: '*.core.disabledPackages'
-        value: [linter, markdown-preview]
+        value: [markdown-preview]
       - path: '*.core.themes'
         value: [atom-material-ui, atom-material-syntax]
+
       - path: '*.editor.preferredLineLength'
         value: 88
       - path: '*.editor.showIndentGuide'
         value: true
       - path: '*.editor.showInvisibles'
         value: true
+
+      - path: '*.ide-python.pylsPlugins.autopep8.enabled'
+        value: false
+      - path: '*.ide-python.pylsPlugins.flake8.enabled'
+        value: true
+      - path: '*.ide-python.pylsPlugins.flake8.maxLineLength'
+        value: 88
+      - path: '*.ide-python.pylsPlugins.jedi_definition.follow_builtin_imports'
+        value: true
+      - path: '*.ide-python.pylsPlugins.jedi_definition.follow_imports'
+        value: true
+      - path: '*.ide-python.pylsPlugins.pycodestyle.maxLineLength'
+        value: 88
+      - path: '*.ide-python.pylsPlugins.rope_completion.enabled'
+        value: true
       - path: '*.ide-python.python'
         value: /usr/bin/python3
+
       - path: '*.linter-shellcheck.enableNotice'
         value: true
       - path: '*.linter-shellcheck.userParameters'
         value: -x
+
       - path: '*.spell-check.locales'
         value: [en-US]
+
+      - path: '*.atom-ide-outline.initialDisplay'
+        value: false
+
       - path: '*.atom-ide-ui.use.atom-ide-diagnostics'
         value: always
       - path: '*.atom-ide-ui.use.atom-ide-diagnostics-ui'
         value: always
+
       - path: '*.atom-beautify.bash.beautify_on_save'
         value: true
       - path: '*.atom-beautify.python.beautify_on_save'
         value: true
       - path: '*.atom-beautify.python.default_beautifier'
         value: black
+      - path: '*.atom-beautify.python.max_line_length'
+        value: 88
       - path: '*.atom-beautify.executables.black.path'
         value: black
       - path: '*.atom-beautify.rust.beautify_on_save'
         value: true
+
       - path: '*.linter-terraform-syntax.newVersion'
         value: true
+
       - path: '*.linter-js-yaml.customTags'
         value:
           - "!Base64"
