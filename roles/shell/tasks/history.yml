@@ -15,4 +15,5 @@
       # Force prompt to write history after every command.
       # http://superuser.com/questions/20900/bash-history-loss
       PROMPT_COMMAND="history -a; $PROMPT_COMMAND"
-      HISTCONTROL=ignoredups
+      export HISTCONTROL=ignoreboth
+      export HISTIGNORE="export AWS_ACCESS_KEY_ID=*:export AWS_SECRET_ACCESS_KEY=*:export AWS_SESSION_TOKEN=*"
