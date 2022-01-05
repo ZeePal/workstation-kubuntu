@@ -41,7 +41,7 @@
 - name: Set meld filename-filters
   dconf:
     key: /org/gnome/meld/filename-filters
-    value: "[('Backups', true, '#*# .#* ~* *~ *.{orig,bak,swp}'), ('OS-specific metadata', true, '.DS_Store ._* .Spotlight-V100 .Trashes Thumbs.db Desktop.ini'), ('Version Control', true, '_MTN .bzr .svn .svn .hg .fslckout _FOSSIL_ .fos CVS _darcs .git .svn .osc'), ('Binaries', true, '*.{pyc,a,obj,o,so,la,lib,dll,exe}'), ('Media', true, '*.{jpg,gif,png,bmp,wav,mp3,ogg,flac,avi,mpg,xcf,xpm}')]"
+    value: "[('Backups', true, '#*# .#* ~* *~ *.{orig,bak,swp}'), ('OS-specific metadata', true, '.DS_Store ._* .Spotlight-V100 .Trashes Thumbs.db Desktop.ini'), ('Version Control', true, '_MTN .bzr .svn .svn .hg .fslckout _FOSSIL_ .fos CVS _darcs .git .svn .osc'), ('Binaries', true, '*.{pyc,a,obj,o,so,la,lib,dll,exe}'), ('Media', true, '*.{jpg,gif,png,bmp,wav,mp3,ogg,flac,avi,mpg,xcf,xpm}'), ('Terraform', true, '.terraform{,.lock.hcl} *.tfstate')]"
 
 - name: Set meld folder columns
   dconf:
@@ -71,4 +71,4 @@
 - name: Set meld text filters
   dconf:
     key: /org/gnome/meld/text-filters
-    value: "[('CVS/SVN keywords', false, '\\\\$\\\\w+(:[^\\\\n$]+)?\\\\$'), ('C++ comment', true, '//.*'), ('C comment', true, '/\\\\*.*?\\\\*/'), ('All whitespace', true, '[ \\\\t\\\\r\\\\f\\\\v]*'), ('Leading whitespace', false, '^[ \\\\t\\\\r\\\\f\\\\v]*'), ('Trailing whitespace', false, '[ \\\\t\\\\r\\\\f\\\\v]*$'), ('Script comment', true, '#.*')]"
+    value: "[('CVS/SVN keywords', false, '\\\\$\\\\w+(:[^\\\\n$]+)?\\\\$'), ('C++ comment', false, '//.*'), ('C comment', false, '/\\\\*.*?\\\\*/'), ('All whitespace', true, '[ \\\\t\\\\r\\\\f\\\\v]*'), ('Leading whitespace', false, '^[ \\\\t\\\\r\\\\f\\\\v]*'), ('Trailing whitespace', false, '[ \\\\t\\\\r\\\\f\\\\v]*$'), ('Script comment', false, '#.*')]"
