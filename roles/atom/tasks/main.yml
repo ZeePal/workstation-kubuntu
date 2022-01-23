@@ -129,6 +129,11 @@
       - path: '*.spell-check.locales'
         value: [en-US]
 
+      - path: '*.atom-ide-datatip.showDataTipOnCursorMove'
+        value: true
+      - path: '*.atom-ide-datatip.showDataTipOnMouseMove'
+        value: false
+
       - path: '*.atom-ide-outline.initialDisplay'
         value: false
 
