@@ -1,0 +1,83 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+if [ "$#" == "0" ]; then
+  echo "Usage: $0 TERRAFORM_VERSION [--force]" >&2
+  exit 1
+fi
+tf_version="${1:?}"
+
+
+if [ -f "/opt/terraform/$tf_version/terraform" ] && [ "${2-}" != "--force" ]; then
+  echo "Terraform ${tf_version} already installed."
+  exit 0
+fi
+
+# Semi-privledged binary so installing with root only
+if [ "$EUID" -ne 0 ]; then
+  echo "ERROR: Please run as root" >&2
+  exit 2
+fi
+
+
+echo "Double checking Hashicorps gpg key..."
+if [ ! -f /opt/terraform/hashicorp.gpg.asc ]; then
+  echo "ERROR: Hashicorp gpg key missing" >&2
+  exit 3
+fi
+if [ "$(stat -c "%a %G %U" /opt/terraform/hashicorp.gpg.asc)" != "644 root root" ]; then
+  echo "ERROR: Insecure Hashicorp gpg key" >&2
+  exit 4
+fi
+if [ "$(sha512sum /opt/terraform/hashicorp.gpg.asc)" != "{{ hashicorp['gpg_key']['hash']['sha512'] }}  /opt/terraform/hashicorp.gpg.asc" ]; then
+  echo "ERROR: Hashicorp gpg key doesnt match expected hash"
+  exit 5
+fi
+# Create & Empty the destination temporary keyring
+true > /opt/terraform/hashicorp.gpg
+chown root:root /opt/terraform/hashicorp.gpg
+chmod u=rw,go=r /opt/terraform/hashicorp.gpg
+true > /opt/terraform/hashicorp.gpg
+# Dearmor the approved gpg key
+gpg --yes -o /opt/terraform/hashicorp.gpg --dearmor /opt/terraform/hashicorp.gpg.asc
+
+
+echo "Downloading terraform $tf_version..."
+mkdir --mode='u=rwx,go=rx' "/opt/terraform/$tf_version"
+chown root:root "/opt/terraform/$tf_version"
+for file in \
+  "terraform_${tf_version}_SHA256SUMS" \
+  "terraform_${tf_version}_SHA256SUMS.sig" \
+  "terraform_${tf_version}_linux_amd64.zip"; do
+  curl "https://releases.hashicorp.com/terraform/${tf_version}/$file" --output "/opt/terraform/${tf_version}/$file"
+done
+
+
+echo "Validating downloaded files..."
+# Starting with the gpg sig for the sha256sum's
+if ! gpgv --keyring /opt/terraform/hashicorp.gpg \
+  "/opt/terraform/$tf_version/terraform_${tf_version}_SHA256SUMS.sig" \
+  "/opt/terraform/$tf_version/terraform_${tf_version}_SHA256SUMS"; then
+  echo "ERROR: Failed to validate the downloaded sha256sums signature" >&2
+  exit 6
+fi
+
+# Check the zip has the correct sum
+(
+  cd "/opt/terraform/$tf_version"  # subshell & cd to let "sha256sum -c" check pwd
+  if ! sha256sum -c <(
+    grep -E "^[a-f0-9]+\s+terraform_${tf_version//./\\.}_linux_amd64\.zip$" "terraform_${tf_version}_SHA256SUMS"
+    ); then
+    echo "ERROR: Failed to validate the downloaded terraform zips sha256sum" >&2
+    exit 7
+  fi
+)
+
+echo "Installing terraform $tf_version..."
+if [ -e "/opt/terraform/$tf_version/terraform" ]; then
+  rm -f "/opt/terraform/$tf_version/terraform"
+fi
+unzip -u -j "/opt/terraform/$tf_version/terraform_${tf_version}_linux_amd64.zip" terraform -d "/opt/terraform/$tf_version/"
+chown root:root "/opt/terraform/$tf_version/terraform"
+chmod ugo=rx "/opt/terraform/$tf_version/terraform"
+ln -s "/opt/terraform/$tf_version/terraform" "/usr/local/bin/tf${tf_version//./}"

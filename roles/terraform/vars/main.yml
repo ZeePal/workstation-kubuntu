@@ -5,20 +5,3 @@ hashicorp:
       sha512: '05376f3c9840c11a237bc862b7f652db110bef1529b20824049436a30d51810c7cf52cd64451210cced545e0dbc367be386996263fce71aa87f69769790c57d4'
     storage:
       raw: /opt/terraform/hashicorp.gpg.asc
-      keyring: /opt/terraform/hashicorp.gpg
-
-terraform:
-  version: 1.0.10
-  default: true
-  storage:
-    prefix: /opt/terraform
-    install: /usr/local/bin/terraform
-  archive:
-    binary:
-      url: 'https://releases.hashicorp.com/terraform/1.0.10/terraform_1.0.10_linux_amd64.zip'
-      hash:
-        sha512: 'e1cb1b350629d4329c5b2e9ec1d0dfa38f96e71da1cb779e1f2dcf71d96f99d768a11103b835dfa1b51c3d65ac1195a2cd5f78bb73a4c8253c9accc8d4ffeca8'
-    hash:
-      url: 'https://releases.hashicorp.com/terraform/1.0.10/terraform_1.0.10_SHA256SUMS'
-    signature:
-      url: 'https://releases.hashicorp.com/terraform/1.0.10/terraform_1.0.10_SHA256SUMS.sig'

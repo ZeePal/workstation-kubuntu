@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+if [ "$#" == "0" ]; then
+  echo "Usage: $0 TERRAFORM_VERSION" >&2
+  exit 1
+fi
+tf_version="${1:?}"
+
+
+if [ ! -f "/opt/terraform/$tf_version/terraform" ]; then
+  echo "ERROR: Terraform $tf_version not installed." >&2
+  exit 1
+fi
+
+ln -sf "/opt/terraform/${tf_version}/terraform" ~/bin/terraform
