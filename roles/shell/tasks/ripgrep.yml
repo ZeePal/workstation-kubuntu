@@ -1,0 +1,20 @@
+- name: Install Ripgrep config
+  copy:
+    dest: "/home/{{ primary_username }}/.ripgreprc"
+    owner: "{{ primary_username }}"
+    group: "{{ primary_username }}"
+    mode: u=rwx,g=rx,o=
+    content: |
+      # Don't let ripgrep vomit really long lines to my terminal, and show a preview.
+      --max-columns=150
+      --max-columns-preview
+
+      # Because who cares about case!?
+      --smart-case
+
+- name: Setup Ripgrep to use config
+  blockinfile:
+    path: "/home/{{ primary_username }}/.bashrc"
+    marker: "# {mark} Ripgrep config"
+    block: |
+      export RIPGREP_CONFIG_PATH="$HOME/.ripgreprc"
