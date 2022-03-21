@@ -11,6 +11,8 @@
   become: true
   become_user: "{{ primary_username }}"
 
+- include: mouse.yml
+
 - include: gnome_extensions/main.yml
 
 - include: fix_virtualbox_icon.yml
