@@ -18,5 +18,5 @@ cd "$GIT_FOLDER"
 git clone "$REPO"
 
 cd "$REPO_NAME"
-./install >bootstrap_install.log 2>&1
+./install 2>&1 | bootstrap_install.log
 reboot
