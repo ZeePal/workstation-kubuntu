@@ -33,6 +33,12 @@
     mode: u=rw,g=rw,o=r
     force: false
 
+- name: Create autostart directory
+  file:
+    state: directory
+    path: "{{ HOME }}/.config/autostart"
+    mode: u=rwx,go=rx
+
 - name: Prompt for KWallet GPG password on login
   copy:
     dest: "{{ HOME }}/.config/autostart/kwallet-query.desktop"
