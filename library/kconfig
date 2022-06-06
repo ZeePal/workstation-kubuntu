@@ -1,0 +1,67 @@
+#!/usr/bin/python3
+import os
+from ansible.module_utils.basic import AnsibleModule
+
+
+def read(run, bin_path, args):
+    _, stdout, _ = run([bin_path] + get_args(**args), check_rc=True)
+    return stdout.rstrip("\n")
+
+
+def write(run, bin_path, args, value):
+    if value is None:
+        value = "--delete"
+    return run([bin_path] + get_args(**args) + [value], check_rc=True)
+
+
+def get_args(key, file=None, groups=None):
+    output = []
+    if file:
+        output.extend(["--file", file])
+    if groups:
+        for group in groups:
+            output.extend(["--group", group])
+    output.extend(["--key", key])
+    return output
+
+
+def main():
+    module_args = dict(
+        file=dict(type="str", required=False),
+        groups=dict(type="list", elements="str", required=False),
+        key=dict(type="str", required=True),
+        value=dict(type="str", required=False),
+    )
+
+    r = {"changed": False}
+    module = AnsibleModule(argument_spec=module_args, supports_check_mode=True)
+
+    if not os.getenv("XDG_RUNTIME_DIR"):
+        os.environ["XDG_RUNTIME_DIR"] = f"/run/user/{os.geteuid()}"
+
+    args = {
+        "file": module.params["file"],
+        "groups": module.params["groups"],
+        "key": module.params["key"],
+    }
+    kread = module.get_bin_path("kreadconfig5", True)
+    current = read(module.run_command, kread, args)
+    r["value"] = current
+
+    if module.params["value"] is not None:  # we wanting to set value (if not in check mode)
+        if current != module.params["value"]:
+            r["changed"] = True
+            kwrite = module.get_bin_path("kwriteconfig5", True)
+            if not module.check_mode:
+                r["rc"], r["stdout"], r["stderr"] = write(module.run_command, kwrite, args, module.params["value"])
+            else:
+                r["diff"] = {
+                    "before": current,
+                    "after": module.params["value"],
+                }
+
+    module.exit_json(**r)
+
+
+if __name__ == "__main__":
+    main()

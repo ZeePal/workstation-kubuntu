@@ -1,0 +1,74 @@
+- name: Set meld draw spaces
+  dconf:
+    key: /org/gnome/meld/draw-spaces
+    value: "['space', 'tab', 'newline', 'nbsp', 'leading', 'text', 'trailing']"
+
+- name: Set meld folder status filters
+  dconf:
+    key: /org/gnome/meld/folder-status-filters
+    value: "['normal', 'normal', 'new', 'modified']"
+
+- name: Set meld highlight syntax
+  dconf:
+    key: /org/gnome/meld/highlight-syntax
+    value: 'true'
+
+- name: Set meld highlight syntax
+  dconf:
+    key: /org/gnome/meld/highlight-current-line
+    value: 'true'
+
+- name: Set meld ignore blank lines
+  dconf:
+    key: /org/gnome/meld/ignore-blank-lines
+    value: 'true'
+
+- name: Set meld show line numbers
+  dconf:
+    key: /org/gnome/meld/show-line-numbers
+    value: 'true'
+
+- name: Set meld wrap mode
+  dconf:
+    key: /org/gnome/meld/wrap-mode
+    value: "'word'"
+
+- name: Set meld maximized
+  dconf:
+    key: /org/gnome/meld/WindowState/is-maximized
+    value: 'true'
+
+- name: Set meld filename-filters
+  dconf:
+    key: /org/gnome/meld/filename-filters
+    value: "[('Backups', true, '#*# .#* ~* *~ *.{orig,bak,swp}'), ('OS-specific metadata', true, '.DS_Store ._* .Spotlight-V100 .Trashes Thumbs.db Desktop.ini'), ('Version Control', true, '_MTN .bzr .svn .svn .hg .fslckout _FOSSIL_ .fos CVS _darcs .git .svn .osc'), ('Binaries', true, '*.{pyc,a,obj,o,so,la,lib,dll,exe}'), ('Media', true, '*.{jpg,gif,png,bmp,wav,mp3,ogg,flac,avi,mpg,xcf,xpm}'), ('Terraform', true, '.terraform{,.lock.hcl} *.tfstate')]"
+
+- name: Set meld folder columns
+  dconf:
+    key: /org/gnome/meld/folder-columns
+    value: "[('size', true), ('modification time', true), ('permissions', true)]"
+
+- name: Set meld folder shallow comparison
+  dconf:
+    key: /org/gnome/meld/folder-shallow-comparison
+    value: 'false'
+
+- name: Set meld indent width
+  dconf:
+    key: /org/gnome/meld/indent-width
+    value: "'2'"
+
+- name: Set meld spaces instead of tabs
+  dconf:
+    key: /org/gnome/meld/insert-spaces-instead-of-tabs
+    value: 'true'
+
+- name: Set meld spaces instead of tabs
+  dconf:
+    key: /org/gnome/meld/style-scheme
+    value: "'oblivion'"
+
+- name: Set meld text filters
+  dconf:
+    key: /org/gnome/meld/text-filters
+    value: "[('CVS/SVN keywords', false, '\\\\$\\\\w+(:[^\\\\n$]+)?\\\\$'), ('C++ comment', false, '//.*'), ('C comment', false, '/\\\\*.*?\\\\*/'), ('All whitespace', true, '[ \\\\t\\\\r\\\\f\\\\v]*'), ('Leading whitespace', false, '^[ \\\\t\\\\r\\\\f\\\\v]*'), ('Trailing whitespace', false, '[ \\\\t\\\\r\\\\f\\\\v]*$'), ('Script comment', false, '#.*')]"

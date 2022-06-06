@@ -1,0 +1,12 @@
+- name: Get current Theme
+  kconfig:
+    file: ~/.config/kdeglobals
+    groups: [General]
+    key: ColorScheme
+  register: kde_current_theme
+
+- name: Set desktop theme to dark
+  when: kde_current_theme.value != 'BreezeDark'
+  command: plasma-apply-colorscheme BreezeDark
+  environment:
+    XDG_RUNTIME_DIR: "/run/user/{{ UID }}"

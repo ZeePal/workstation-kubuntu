@@ -1,12 +1,10 @@
 - name: Setup Misc command aliases
   blockinfile:
-    path: "/home/{{ primary_username }}/.bash_aliases"
+    path: "{{ HOME }}/.bash_aliases"
     marker: "# {mark} Misc"
-    create: yes
-    owner: "{{ primary_username }}"
-    group: "{{ primary_username }}"
+    create: true
     mode: u=rw,go=r
-    block: |
+    block: !unsafe |
       alias o=xdg-open
       alias open=xdg-open
       alias rga='rg -uuu'
@@ -14,3 +12,6 @@
       alias ll='exa -al'
       alias pw='pwgen -cnys1 32 1'
       alias pws='pwgen -cns1 32 1'
+      alias table="column -t"
+
+      function jat() { jq . "${1:--}" |bat -l json; }

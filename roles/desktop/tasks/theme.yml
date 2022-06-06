@@ -1,4 +1,0 @@
-- name: Set desktop theme to dark
-  dconf:
-    key: /org/gnome/desktop/interface/gtk-theme
-    value: "'Yaru-dark'"

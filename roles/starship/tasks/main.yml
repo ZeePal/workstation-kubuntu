@@ -1,69 +1,87 @@
-- name: Install Starship
-  become: true
-  become_user: "{{ primary_username }}"
-  command: "'/home/{{ primary_username }}/.cargo/bin/cargo' install starship"
-  args:
-    creates: "/home/{{ primary_username }}/.cargo/bin/starship"
-
 - name: Install Starship config
   copy:
-    dest: "/home/{{ primary_username }}/.config/starship.toml"
-    owner: "{{ primary_username }}"
-    group: "{{ primary_username }}"
-    mode: u=rwx,g=rx,o=
+    dest: "{{ HOME }}/.config/starship.toml"
+    owner: "{{ USER }}"
+    group: "{{ USER }}"
+    mode: u=rw,go=r
     content: |
+      "$schema" = 'https://starship.rs/config-schema.json'
+
       add_newline = false
 
       # Moved directory to second last (from default order)
       format = """
       $username\
       $hostname\
+      $localip\
       $shlvl\
+      $singularity\
       $kubernetes\
+      $vcsh\
       $git_branch\
       $git_commit\
       $git_state\
+      $git_metrics\
       $git_status\
       $hg_branch\
       $docker_context\
       $package\
+      $buf\
+      $c\
       $cmake\
+      $cobol\
+      $container\
       $dart\
+      $deno\
       $dotnet\
       $elixir\
       $elm\
       $erlang\
       $golang\
+      $haskell\
       $helm\
       $java\
       $julia\
+      $kotlin\
+      $lua\
       $nim\
       $nodejs\
       $ocaml\
       $perl\
       $php\
+      $pulumi\
       $purescript\
       $python\
+      $rlang\
+      $red\
       $ruby\
       $rust\
+      $scala\
       $swift\
       $terraform\
+      $vlang\
+      $vagrant\
       $zig\
       $nix_shell\
       $conda\
+      $spack\
       $memory_usage\
       $aws\
       $gcloud\
+      $openstack\
+      $azure\
       $env_var\
       $crystal\
-      $cmd_duration\
       $custom\
+      $cmd_duration\
       $line_break\
       $jobs\
       $battery\
       $time\
       $status\
+      $shell\
       $directory\
+      $sudo\
       $character"""
 
       [line_break]
@@ -116,9 +134,14 @@
       symbol = "🐏"
       format = "$symbol [${ram_pct}]($style) "
 
+      [sudo]
+      disabled = false
+      symbol = "🧙"
+      format = "[$symbol]($style)"
+
 - name: Setup Starship Terminal Prompt
   blockinfile:
-    path: "/home/{{ primary_username }}/.bashrc"
+    path: "{{ HOME }}/.bashrc"
     insertafter: "# END Rust"
     marker: "# {mark} Starship"
     block: |

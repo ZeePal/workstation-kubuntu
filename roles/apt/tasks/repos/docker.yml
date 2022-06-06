@@ -1,0 +1,25 @@
+- name: Install the Docker apt key
+  apt_key:
+    state: present
+    keyring: /etc/apt/keyrings/docker.gpg
+    id: 9DC858229FC7DD38854AE2D88D81803C0EBFCD88
+    url: https://download.docker.com/linux/ubuntu/gpg
+
+- name: Install restrictions for Docker apt repo
+  copy:
+    dest: /etc/apt/preferences.d/50-docker
+    owner: root
+    group: root
+    mode: u=rw,go=r
+    content: |
+      Package: *
+      Pin: origin download.docker.com
+      Pin-Priority: 100
+
+- name: Install the Docker apt repository
+  apt_repository:
+    state: present
+    repo: deb [arch=amd64 signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu jammy stable
+    filename: docker
+    update_cache: false
+  notify: Refresh apt

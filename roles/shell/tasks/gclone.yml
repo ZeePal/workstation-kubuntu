@@ -1,0 +1,25 @@
+- name: Create ZeePal config folder
+  file:
+    state: directory
+    path: "{{ HOME }}/.config/ZeePal/"
+    mode: u=rwx,go=rx
+
+- name: init gclone default_git_origin
+  copy:
+    dest: "{{ HOME }}/.config/ZeePal/default_git_origin"
+    mode: u=rw,go=r
+    force: false
+    content: "git@github.com:ZeePal/{REPO}.git"
+
+- name: Setup gclone function
+  blockinfile:
+    path: "{{ HOME }}/.bash_aliases"
+    marker: "# {mark} gclone"
+    block: !unsafe |
+      function gclone() (
+          set -e
+          local default_git_origin="$(<~/.config/ZeePal/default_git_origin)"
+          local repo="${default_git_origin//\{REPO\}/${1:?}}"
+          shift 1
+          git clone "$repo" "$@"
+      )

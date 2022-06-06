@@ -1,0 +1,90 @@
+#!/usr/bin/env python3
+import json
+import re
+import string
+import sys
+
+RE_FLAGS = re.IGNORECASE | re.MULTILINE
+
+
+def check_scalar(input, pattern, path):
+    if pattern.search(str(input)):
+        print_path(path)
+
+
+def check_bool(input, pattern, path):
+    if input is True:
+        if pattern.search("true"):
+            print_path(path)
+    else:
+        if pattern.search("false"):
+            print_path(path)
+
+
+def check_none(input, pattern, path):
+    if pattern.search("null"):
+        print_path(path)
+
+
+def walk_list(input, pattern, path):
+    for index, item in enumerate(input):
+        process_object(item, pattern, path + [f"[{index}]"])
+
+
+def walk_dict(input, pattern, path):
+    for key, value in input.items():
+        current_path = path + [f".{key}"]
+        process_object(key, pattern, current_path)
+        process_object(value, pattern, current_path)
+
+
+TYPE_MAP = {
+    dict: walk_dict,
+    list: walk_list,
+    str: check_scalar,
+    int: check_scalar,
+    float: check_scalar,
+    bool: check_bool,
+    type(None): check_none,
+}
+
+
+def needs_escaping(input):
+    for c in input:
+        if c not in string.ascii_letters and c not in string.digits and c not in "_":
+            return True
+    return False
+
+
+def print_path(path):
+    output = []
+    for part in path:
+        if part[0] == "." and len(part) > 1:
+            key = part[1:]
+            if needs_escaping(key):
+                key = key.replace('"', '\\"')
+                output.append(f'.["{key}"]')
+            else:
+                output.append(part)
+        else:
+            output.append(part)
+
+    print_output = "".join(output)
+    if print_output.startswith(".."):
+        print(print_output[1:])  # only 1 dot plz
+    else:
+        print(print_output)
+
+
+def process_object(input, pattern, path):
+    TYPE_MAP[type(input)](input, pattern, path)
+
+
+def main():
+    pattern = re.compile(sys.argv[1], RE_FLAGS)
+    data = json.load(sys.stdin)
+    process_object(data, pattern, ["."])
+
+
+if __name__ == "__main__":
+    main()

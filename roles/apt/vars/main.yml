@@ -1,1 +1,2 @@
-mirror: 'http://mirror.internode.on.net/pub/ubuntu/ubuntu/'
+apt:
+  mirror: http://mirror.internode.on.net/pub/ubuntu/ubuntu/

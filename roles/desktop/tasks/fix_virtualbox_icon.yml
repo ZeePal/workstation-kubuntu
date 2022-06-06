@@ -1,5 +1,0 @@
-# Source: https://www.virtualbox.org/ticket/18705
-- name: Fix VirtualBox VM Icon
-  shell: sed 's/^Name=VirtualBox$/Name=VirtualBoxVM/' /usr/share/applications/virtualbox.desktop > /usr/share/applications/virtualboxvm.desktop
-  args:
-    creates: /usr/share/applications/virtualboxvm.desktop

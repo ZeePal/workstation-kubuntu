@@ -1,13 +1,15 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-GIT_FOLDER=~/git
-REPO=https://github.com/ZeePal/workstation-ubuntu.git
+GIT_FOLDER=~/git/ZeePal
+REPO=https://github.com/ZeePal/workstation-kubuntu.git
 REPO_NAME="$(basename -s .git "$REPO")"
 
-
 sudo apt update
-sudo apt install -y ansible git
+sudo apt install -y software-properties-common
+sudo add-apt-repository --yes --update ppa:ansible/ansible
+
+sudo apt install -y ansible git python3-apt curl build-essential
 
 if [[ ! -e $GIT_FOLDER ]]; then
   mkdir -p "$GIT_FOLDER"
@@ -16,4 +18,5 @@ cd "$GIT_FOLDER"
 git clone "$REPO"
 
 cd "$REPO_NAME"
-exec ./install
+./install
+reboot

@@ -1,25 +1,12 @@
-- name: Create Bat config folder
+- name: Bat symlink
   file:
-    state: directory
-    path: "/home/{{ primary_username }}/.config/bat/"
-    owner: "{{ primary_username }}"
-    group: "{{ primary_username }}"
+    state: link
+    path: /usr/local/bin/bat
+    src: /usr/bin/batcat
+    owner: root
+    group: root
     mode: u=rwx,go=rx
 
-- name: Configure Bat
-  blockinfile:
-    path: "/home/{{ primary_username }}/.config/bat/config"
-    marker: "# {mark} theme"
-    create: yes
-    owner: "{{ primary_username }}"
-    group: "{{ primary_username }}"
-    mode: u=rw,go=r
-    block: |
-      --theme="Monokai Extended Bright"
-
-- name: Install bat
+- import_tasks: as_user.yml
   become: true
-  become_user: "{{ primary_username }}"
-  command: "'/home/{{ primary_username }}/.cargo/bin/cargo' install --locked bat"
-  args:
-    creates: "/home/{{ primary_username }}/.cargo/bin/bat"
+  become_user: "{{ USER }}"

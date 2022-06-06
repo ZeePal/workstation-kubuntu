@@ -1,0 +1,15 @@
+- name: Install goget
+  copy:
+    src: "{{ role_path }}/files/goget"
+    dest: /usr/local/bin/goget
+    mode: u=rwx,go=rx
+
+- name: Install godef
+  copy:
+    src: "{{ role_path }}/files/godef"
+    dest: /usr/local/bin/godef
+    mode: u=rwx,go=rx
+
+- import_tasks: as_user.yml
+  become: true
+  become_user: "{{ USER }}"

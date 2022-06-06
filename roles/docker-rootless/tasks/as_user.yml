@@ -1,0 +1,21 @@
+- name: Install the rootless Docker
+  command:
+    cmd: dockerd-rootless-setuptool.sh install
+    creates: ~/.config/systemd/user/docker.service
+  environment:
+    XDG_RUNTIME_DIR: "/run/user/{{ UID }}"
+
+- name: Setup Docker host envvar
+  blockinfile:
+    dest: ~/.bashrc
+    marker: "# {mark} Docker-Rootless"
+    block: |
+      export DOCKER_HOST="unix://$XDG_RUNTIME_DIR/docker.sock"
+
+- name: Start Docker service
+  systemd:
+    scope: user
+    name: docker
+    state: started
+    enabled: true
+    daemon_reload: true

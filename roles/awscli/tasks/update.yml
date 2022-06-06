@@ -1,0 +1,74 @@
+- name: Check for recent AWS cli updates
+  find:
+    paths: /opt/aws/cli/
+    patterns: awscli.zip.sig
+    age: -12h
+  register: awscli_last_update
+
+- name: Download AWS cli archive gpg signature
+  when: not awscli_last_update.files # If not recently updated
+  get_url:
+    url: https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip.sig
+    dest: /opt/aws/cli/latest_awscli.zip.sig
+    mode: u=rw,go=r
+    force: true
+
+- name: Get AWS cli latest archive signature hash
+  stat:
+    path: /opt/aws/cli/latest_awscli.zip.sig
+    get_checksum: true
+  register: awscli_latest_archive_hash
+
+- name: Get AWS cli current archive signature hash
+  stat:
+    path: /opt/aws/cli/awscli.zip.sig
+    get_checksum: true
+  register: awscli_current_archive_hash
+
+- name: Install/Update AWS CLI
+  # If the signature files are missing (eg not installed)
+  # OR if the latest vs installed signature file are different (eg new version available)
+  when: |
+    not awscli_current_archive_hash.stat.exists or not awscli_latest_archive_hash.stat.exists
+    or awscli_current_archive_hash.stat.checksum != awscli_latest_archive_hash.stat.checksum
+  block:
+    - name: Download AWS cli archive
+      get_url:
+        url: https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip
+        dest: /opt/aws/cli/awscli.zip
+        mode: u=rw,go=r
+        force: true
+      register: aws_cli_archive
+
+    - name: Check AWS cli archive gpg signature
+      command: >
+        gpg --no-default-keyring --keyring /opt/aws/cli/awscli.gpg
+          --verify /opt/aws/cli/latest_awscli.zip.sig /opt/aws/cli/awscli.zip
+
+    - name: Delete extraction folder
+      file:
+        state: absent
+        path: /opt/aws/cli/extracted
+
+    - name: Create extraction folder
+      file:
+        state: directory
+        path: /opt/aws/cli/extracted
+        mode: u=rwX,go=rX
+
+    - name: Extract AWS cli from archive
+      unarchive:
+        src: /opt/aws/cli/awscli.zip
+        dest: /opt/aws/cli/extracted
+
+    - name: Install/Update AWS cli
+      command:
+        cmd: ./aws/install --update
+        chdir: /opt/aws/cli/extracted
+
+    - name: Record latest install/update
+      copy:
+        src: /opt/aws/cli/latest_awscli.zip.sig
+        dest: /opt/aws/cli/awscli.zip.sig
+        mode: u=rwx,go=rx
+        remote_src: true

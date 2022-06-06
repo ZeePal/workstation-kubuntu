@@ -1,0 +1,45 @@
+#!/usr/bin/env bash
+
+# Add me to the virtualbox file share group
+sudo adduser "$USER" vboxsf
+
+# Make grub not wait for 30 seconds
+echo GRUB_RECORDFAIL_TIMEOUT=1 | sudo tee -a /etc/default/grub
+sudo update-grub
+
+# Create script to wait for the file share to mount
+cat <<! >~/virtualbox_tester
+#!/usr/bin/env bash
+if test -e ~/git; then
+  echo "Already run, exiting..."
+  exit
+fi
+
+echo "Pre-sudo'ing..."
+echo test |sudo -S echo "sudo'd."
+
+while true; do
+  echo "Checking..."
+  if test -f "/mnt/test/dev_bootstrap_install"; then
+    echo "Executing..."
+    (time /mnt/test/dev_bootstrap_install) 2>&1 |tee ~/dev_bootstrap_install.log
+    exit
+  fi
+  sleep 0.05
+done
+!
+chmod +x ~/virtualbox_tester
+
+# Setup autostart for the above tester script
+mkdir -p ~/.config/autostart
+cat <<! >~/.config/autostart/virtualbox_tester.desktop
+[Desktop Entry]
+Exec=$HOME/virtualbox_tester
+Icon=
+Name=virtualbox_tester
+Path=
+Terminal=True
+Type=Application
+!
+
+echo "Done."

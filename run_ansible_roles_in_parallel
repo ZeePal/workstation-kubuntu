@@ -1,16 +1,23 @@
-#!/usr/bin/env python3
-from collections import namedtuple
-from subprocess import Popen
-import shlex
-import os
-from time import time
+#!/usr/bin/env -S python3 -u
 import argparse
+import os
 import queue
+import shlex
+from collections import namedtuple
 from signal import signal, SIGCHLD
+from subprocess import Popen
+
+from time import time
+
 
 SCRIPT_DIR = os.path.dirname(os.path.realpath(__file__))
 ROLES_DIR = f"{SCRIPT_DIR}/roles"
 SLEEP_INTERVAL = 10
+
+ANSIBLE_ENV = os.environ.copy()
+ANSIBLE_ENV["ANSIBLE_LIBRARY"] = f"~/.ansible/plugins/modules:/usr/share/ansible/plugins/modules:{SCRIPT_DIR}/library"
+ANSIBLE_ENV["ANSIBLE_LOAD_CALLBACK_PLUGINS"] = "true"
+ANSIBLE_ENV["ANSIBLE_STDOUT_CALLBACK"] = "unixy"
 
 Roles = namedtuple("Roles", ["child_to_parents", "parent_to_children"])
 
@@ -22,6 +29,8 @@ signal(SIGCHLD, lambda x, y: SIGCHLD_QUEUE.put(os.waitpid(-1, os.WNOHANG)))
 
 def main():
     args = get_args()
+    if args.debug:
+        ANSIBLE_ENV["ANSIBLE_STDOUT_CALLBACK"] = "debug"
     if not args.role:
         # Build real dep tree from all roles
         roles = build_dep_tree()
@@ -30,22 +39,38 @@ def main():
         r = {role: set() for role in args.role}
         roles = Roles(r, r)
     run_roles(
-        roles, args.username, check=args.check, ignore_errors=args.ignore_errors,
+        roles,
+        {
+            "USER": args.user,
+            "UID": args.uid,
+            "HOME": args.home,
+        },
+        check=args.check,
+        ignore_errors=args.ignore_errors,
     )
 
 
 def get_args():
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        "-u",
-        "--username",
+        "--user",
         help="What is the username of the primary workstation user?",
         required=True,
         type=str,
     )
     parser.add_argument(
-        "role", help="Roles to execute (Default is all)", nargs="*", type=str
+        "--uid",
+        help="What is the id of the primary workstation user?",
+        required=True,
+        type=str,
     )
+    parser.add_argument(
+        "--home",
+        help="What is the home folder of the primary workstation user?",
+        required=True,
+        type=str,
+    )
+    parser.add_argument("role", help="Roles to execute (Default is all)", nargs="*", type=str)
     parser.add_argument(
         "-e",
         "--exclude",
@@ -61,6 +86,11 @@ def get_args():
         help="Continue executing if errors occur",
         action="store_true",
     )
+    parser.add_argument(
+        "--debug",
+        help="Change Ansible to Debug STDOUT",
+        action="store_true",
+    )
     return parser.parse_args()
 
 
@@ -73,10 +103,12 @@ def build_dep_tree():
 def load_role_dependencies():
     output = {}
     for role in os.scandir(ROLES_DIR):
+        if ".DISABLED" in role.name:
+            continue
         if role.is_dir():
             try:
                 with open(f"{role.path}/depends_on", "r") as f:
-                    # 1 line = 1 dependancy, whole line is a role name
+                    # 1 line = 1 dependency, whole line is a role name
                     output[role.name] = set(f.read().splitlines())
             except FileNotFoundError:
                 # Missing file equiv to empty depends_on list
@@ -91,9 +123,7 @@ def get_role_dependants(child_to_parents):
             try:
                 output[parent].add(child)
             except KeyError:
-                raise ValueError(
-                    f"Role '{child}' depends on non-existant role '{parent}'"
-                )
+                raise ValueError(f"Role '{child}' depends on non-existent role '{parent}'")
     return output
 
 
@@ -101,14 +131,16 @@ class RoleError(Exception):
     pass
 
 
-def run_roles(roles, user, check=False, ignore_errors=False):
+def run_roles(roles, extra_vars, check=False, ignore_errors=False):
     errors = []
     running = {}
     while running or (roles.child_to_parents and (not errors or ignore_errors)):
         if not errors or ignore_errors:
-            start_ready_roles(running, roles, user, check)
+            start_ready_roles(running, roles, extra_vars, check)
         else:
-            print("\n\n##### Errors Detected, not starting any more roles ######\n\n")
+            print("\n\n##### Errors Detected, not starting any more roles ######")
+            print("\n".join(errors))
+            print("\n\n")
 
         wait_for_role_to_finish(running, roles, errors)
     if errors and not ignore_errors:
@@ -138,15 +170,15 @@ def wait_for_role_to_finish(running, roles, errors):
         poll_running_roles(running, roles, errors)  # Check them all
 
 
-def start_ready_roles(running, roles, primary_username, check):
+def start_ready_roles(running, roles, extra_vars, check):
     for child in list(roles.child_to_parents.keys()):
         if not roles.child_to_parents[child]:
-            # If no dependancys left
-            proc = start_ansible(child, primary_username, check=check)
+            # If no dependencys left
+            proc = start_ansible(child, extra_vars, check=check)
             running[proc.pid] = {"role": child, "proc": proc, "start": time()}
             del roles.child_to_parents[child]
     if not running:
-        raise RoleError(f"Circular dependancy detected: {roles.child_to_parents}")
+        raise RoleError(f"Circular dependency detected: {roles.child_to_parents}")
 
 
 def process_finished_role(running, roles, pid, exit_code, errors):
@@ -171,10 +203,8 @@ def poll_running_roles(running, roles, errors):
             process_finished_role(running, roles, pid, exit_code, errors)
 
 
-def start_ansible(role, primary_username, check=False):
+def start_ansible(role, extra_vars, check=False):
     print(f"Starting Role: {role}")
-    safe_role = shlex.quote(role)
-    safe_primary_username = shlex.quote(primary_username)
 
     cmd = ["ansible localhost"]
     if check:
@@ -182,17 +212,24 @@ def start_ansible(role, primary_username, check=False):
     cmd.extend(
         [
             "-m include_role",
-            f"-a name={safe_role}",
-            f"-e primary_username={safe_primary_username}",
+            f"-a name={shlex.quote(role)}",
             "-e ansible_python_interpreter=/usr/bin/python3",
-            # Add output prefix's
-            "2>&1|awk -W interactive",
-            f"-v role={safe_role}",
+        ]
+    )
+    cmd.extend(extra_vars_to_args(extra_vars))
+    cmd.extend(
+        [  # Add output prefix's
+            "2>&1 |awk -W interactive",
+            f"-v role={shlex.quote(role)}",
             '\'{print strftime("%Y-%m-%d %H:%M:%S")": "role": "$0}\'',
             ";exit ${PIPESTATUS[0]}",  # Pass correct exit code back
         ]
     )
-    return Popen(" ".join(cmd), shell=True, executable="/bin/bash", cwd=SCRIPT_DIR)
+    return Popen(" ".join(cmd), shell=True, executable="/bin/bash", cwd=SCRIPT_DIR, env=ANSIBLE_ENV)
+
+
+def extra_vars_to_args(extra_vars):
+    return [f"-e {shlex.quote(name)}={shlex.quote(value)}" for name, value in extra_vars.items()]
 
 
 if __name__ == "__main__":

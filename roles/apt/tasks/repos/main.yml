@@ -1,6 +1,14 @@
-- include: mirror.yml
-- include: google-chrome.yml
-- include: atom.yml
-- include: signal.yml
+- name: Create third party apt keyrings folder
+  file:
+    state: directory
+    path: /etc/apt/keyrings
+    owner: root
+    group: root
+    mode: u=rwx,go=rx
 
-- include: refresh_cache.yml
+- import_tasks: google-chrome.yml
+- import_tasks: google-cloud.yml
+- import_tasks: signal.yml
+- import_tasks: docker.yml
+- import_tasks: hashicorp.yml
+- import_tasks: vscode.yml

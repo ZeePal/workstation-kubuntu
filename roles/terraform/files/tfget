@@ -1,0 +1,40 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+if [ "$#" == "0" ]; then
+  echo "Usage: $0 TERRAFORM_VERSION [--force]" >&2
+  exit 1
+fi
+tf_version="${1:?}"
+
+if [ -f "/opt/terraform/$tf_version/terraform" ] && [ "${2-}" != "--force" ]; then
+  echo "Terraform ${tf_version} already installed."
+  exit 0
+fi
+
+# Semi-privledged binary so installing with root only
+if [ "$EUID" -ne 0 ]; then
+  echo "ERROR: Please run as root" >&2
+  exit 2
+fi
+
+echo "Installing terraform $tf_version..."
+if [ -e "/opt/terraform/$tf_version" ]; then
+  rm -rf "/opt/terraform/$tf_version"
+fi
+mkdir --mode='u=rwx,go=rx' "/opt/terraform/$tf_version"
+
+(
+  cd "/opt/terraform/$tf_version"
+  apt download "terraform=$tf_version"
+  ar p "terraform_${tf_version}_amd64.deb" data.tar.gz | tar xvzf - ./usr/bin/terraform --strip-components 3
+)
+
+chown root:root "/opt/terraform/$tf_version/terraform"
+chmod ugo=rx "/opt/terraform/$tf_version/terraform"
+ln -s "/opt/terraform/$tf_version/terraform" "/usr/local/bin/tf${tf_version}"
+ln -s "/opt/terraform/$tf_version/terraform" "/usr/local/bin/tf${tf_version//./}"
+
+if [ -x "/opt/terraform/$tf_version/terraform" ]; then
+  echo "Installed terraform $tf_version"
+fi

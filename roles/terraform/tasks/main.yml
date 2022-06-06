@@ -4,32 +4,27 @@
     path: /opt/terraform
     owner: root
     group: root
-
-- name: Download Hashicorps gpg key
-  get_url:
-     url:  "{{ hashicorp['gpg_key']['url'] }}"
-     dest: "{{ hashicorp['gpg_key']['storage']['raw'] }}"
-     checksum: "sha512:{{ hashicorp['gpg_key']['hash']['sha512'] }}"
+    mode: u=rwx,go=rx
 
 - name: Install tfget
-  template:
-    src: "{{ role_path }}/files/tfget.j2"
+  copy:
+    src: "{{ role_path }}/files/tfget"
     dest: /usr/local/bin/tfget
     mode: u=rwx,go=rx
 
 - name: Install tfdef
-  ansible.builtin.copy:
+  copy:
     src: "{{ role_path }}/files/tfdef"
     dest: /usr/local/bin/tfdef
     mode: u=rwx,go=rx
 
 - name: Setup Terraform command aliases
   blockinfile:
-    path: "/home/{{ primary_username }}/.bash_aliases"
+    path: "{{ HOME }}/.bash_aliases"
     marker: "# {mark} Terraform"
-    create: yes
-    owner: "{{ primary_username }}"
-    group: "{{ primary_username }}"
+    create: true
+    owner: "{{ USER }}"
+    group: "{{ USER }}"
     mode: u=rw,go=r
     block: |
       alias t=terraform
@@ -43,14 +38,14 @@
 - name: Terraforms plugin cache folder
   file:
     state: directory
-    path: "/home/{{ primary_username }}/.terraform.d/plugin-cache/"
-    owner: "{{ primary_username }}"
-    group: "{{ primary_username }}"
+    path: "{{ HOME }}/.terraform.d/plugin-cache/"
+    owner: "{{ USER }}"
+    group: "{{ USER }}"
     mode: u=rwx,g=rx,o=rx
 
 - name: Setup Terraform plugin cache
   blockinfile:
-    dest: "/home/{{ primary_username }}/.bashrc"
+    dest: "{{ HOME }}/.bashrc"
     marker: "# {mark} Terraform Plugin Cache"
     block: |
       export TF_PLUGIN_CACHE_DIR="$HOME/.terraform.d/plugin-cache"

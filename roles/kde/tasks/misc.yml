@@ -1,0 +1,47 @@
+- name: Bouncy cursor apps
+  kconfig:
+    file: ~/.config/klaunchrc
+    groups: [BusyCursorSettings]
+    key: Bouncing
+    value: "true"
+
+- name: Faster animations
+  kconfig:
+    file: ~/.config/kdeglobals
+    groups: [KDE]
+    key: AnimationDurationFactor
+    value: "0.5"
+
+- name: Hide notifications faster
+  kconfig:
+    file: ~/.config/plasmanotifyrc
+    groups: [Notifications]
+    key: PopupTimeout
+    value: "3000"
+
+- name: Disable ScreenReader
+  kconfig:
+    file: ~/.config/kaccessrc
+    groups: [ScreenReader]
+    key: Enabled
+    value: "false"
+
+- name: Setup .face
+  copy:
+    src: /usr/share/plasma/avatars/photos/Astronaut.png
+    dest: "{{ HOME }}/.face"
+    mode: u=rw,g=rw,o=r
+    force: false
+
+- name: Prompt for KWallet GPG password on login
+  copy:
+    dest: "{{ HOME }}/.config/autostart/kwallet-query.desktop"
+    mode: u=rw,go=r
+    content: |
+      [Desktop Entry]
+      Exec=kwallet-query -l kdewallet
+      Icon=
+      Name=kwallet-query
+      Path=
+      Terminal=False
+      Type=Application

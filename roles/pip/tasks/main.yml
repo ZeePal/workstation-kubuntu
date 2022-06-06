@@ -3,13 +3,14 @@
     state: present
     executable: pip3
     name:
+      - ansible-lint
       - yq
       - beautifulsoup4
       - black
       - boto3
       - botocore
       - python-lsp-server[all]
-      - pycryptodome
+      - cryptography
       - requests
       - pyyaml
       - thefuck
@@ -23,3 +24,6 @@
       - beautysh
       - pwntools
       - inotify
+      - jmespath
+      - cfn-flip
+      - howdoi

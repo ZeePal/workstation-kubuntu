@@ -1,0 +1,14 @@
+- name: Setup docker shell function
+  blockinfile:
+    path: "{{ HOME }}/.bash_aliases"
+    marker: "# {mark} docker shell"
+    block: !unsafe |
+      function ds {
+          if [ "$#" -ne 1 ] && [ "$#" -ne 2 ]; then echo "Usage: $0 DOCKER_IMAGE [SHELL_COMMAND]" >&2; return 1; fi;
+          local image="${1:?}";
+          if [ "$#" -eq 1 ]; then
+              docker run -it --entrypoint /bin/sh "$image" -c 'if [ -e /bin/bash ];then /bin/bash; else /bin/sh;fi';
+          else
+              docker run -it --entrypoint /bin/sh "$image" -c 'if [ -e /bin/bash ];then /bin/bash -c "$1"; else /bin/sh -c "$1";fi' -- "${2:?}";
+          fi;
+      }

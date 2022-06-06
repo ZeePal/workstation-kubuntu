@@ -1,6 +1,6 @@
 - name: Setup Eternal Bash History
   blockinfile:
-    path: "/home/{{ primary_username }}/.bashrc"
+    path: "{{ HOME }}/.bashrc"
     insertafter: "# END Tilix Config"
     marker: "# {mark} Eternal Bash History"
     block: |

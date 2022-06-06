@@ -1,0 +1,25 @@
+- name: Install the Hashicorp apt key
+  apt_key:
+    state: present
+    keyring: /etc/apt/keyrings/hashicorp.gpg
+    id: E8A032E094D8EB4EA189D270DA418C88A3219F7B
+    url: https://apt.releases.hashicorp.com/gpg
+
+- name: Install restrictions for Hashicorp apt repo
+  copy:
+    dest: /etc/apt/preferences.d/50-hashicorp
+    owner: root
+    group: root
+    mode: u=rw,go=r
+    content: |
+      Package: *
+      Pin: origin apt.releases.hashicorp.com
+      Pin-Priority: 100
+
+- name: Install the Hashicorp apt repository
+  apt_repository:
+    state: present
+    repo: deb [arch=amd64 signed-by=/etc/apt/keyrings/hashicorp.gpg] https://apt.releases.hashicorp.com jammy main
+    filename: hashicorp
+    update_cache: false
+  notify: Refresh apt

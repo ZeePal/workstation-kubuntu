@@ -1,52 +1,27 @@
-- name: Checking if Delta is already installed
-  stat:
-    path: "{{ apps['delta']['storage']['prefix'] }}/delta"
-  register: delta_symlink
-
-- name: Install Delta
-  when: delta_symlink.stat.exists == False
-  block:
-    - name: Create Delta install folders
-      file:
-        state: directory
-        path: "{{ apps['delta']['storage']['prefix'] }}/"
-        owner: root
-        group: root
-
-    - name: Download Delta
-      get_url:
-         url:  "{{ apps['delta']['archive']['url'] }}"
-         dest: "{{ apps['delta']['storage']['prefix'] }}/delta.tar.gz"
-         checksum: "sha512:{{ apps['delta']['archive']['hash']['sha512'] }}"
-
-    - name: Extract Delta
-      unarchive:
-        src: "{{ apps['delta']['storage']['prefix'] }}/delta.tar.gz"
-        dest: "{{ apps['delta']['storage']['prefix'] }}/"
-        remote_src: yes
-        extra_opts: '--strip-components=1'
-
-    - name: Symlink Delta
-      file:
-        state: link
-        path: "{{ apps['delta']['storage']['install'] }}"
-        src: "{{ apps['delta']['storage']['prefix'] }}/delta"
-        owner: root
-        group: root
-        mode: u=rwx,go=rx
-
 - name: Configure Delta to be used by git
   blockinfile:
-    path: "/home/{{ primary_username }}/.gitconfig"
+    path: "{{ HOME }}/.gitconfig"
     marker: "# {mark} delta"
-    create: yes
-    owner: "{{ primary_username }}"
-    group: "{{ primary_username }}"
+    create: true
+    owner: "{{ USER }}"
+    group: "{{ USER }}"
     mode: u=rw,go=r
     block: |
       [core]
-          pager = delta --plus-color="#012800" --minus-color="#340001" --theme='Monokai Extended'
+          pager = delta
           editor = vim
 
       [interactive]
           diffFilter = delta --color-only
+
+      [delta]
+          theme = TwoDark
+          side-by-side = true
+          navigate = true
+
+      [merge]
+          conflictstyle = diff3
+
+      [diff]
+          colorMoved = default
+          tool = meld

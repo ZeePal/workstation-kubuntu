@@ -1,12 +1,10 @@
 - name: Setup gcd command alias
   blockinfile:
-    path: "/home/{{ primary_username }}/.bash_aliases"
+    path: "{{ HOME }}/.bash_aliases"
     marker: "# {mark} gcd"
-    create: yes
-    owner: "{{ primary_username }}"
-    group: "{{ primary_username }}"
+    create: true
     mode: u=rw,go=r
     block: |
-      function _gcd { CDPATH=/home/{{ primary_username }}/git/ _simpler_cd_completer "$@"; }
+      function _gcd { CDPATH={{ HOME }}/git/ _simpler_cd_completer "$@"; }
       complete -o nospace -F _gcd gcd
-      function gcd { cd "/home/{{ primary_username }}/git/$1"; }
+      function gcd { cd "{{ HOME }}/git/$1"; }

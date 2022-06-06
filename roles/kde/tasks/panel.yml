@@ -1,0 +1,18 @@
+- name: Config Bottom panel
+  kconfig:
+    file: ~/.config/plasmashellrc
+    groups: [PlasmaViews, "Panel 2"]
+    key: "{{ item.key }}"
+    value: "{{ item.value }}"
+  with_dict:
+    panelVisibility: 2 # windows can cover
+
+- name: Bottom panel date format
+  kconfig:
+    file: ~/.config/plasma-org.kde.plasma.desktop-appletsrc
+    groups: [Containments, "2", Applets, "20", Configuration, Appearance]
+    key: "{{ item.key }}"
+    value: "{{ item.value }}"
+  with_dict:
+    dateFormat: isoDate
+    use24hFormat: 2

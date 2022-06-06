@@ -1,0 +1,25 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+if [ "$#" == "0" ]; then
+  echo "Usage: $0 GO_VERSION [--force]" >&2
+  exit 1
+fi
+go_version="${1:?}"
+
+if [ -f ~/go/bin/"go$go_version" ] && [ "${2-}" != "--force" ]; then
+  echo "Go ${go_version} already installed."
+  exit 0
+fi
+
+echo "Installing go $go_version..."
+if [ -e ~/go/bin/"go$go_version" ]; then
+  rm -rf ~/go/bin/"go$go_version"
+fi
+
+go install "golang.org/dl/go$go_version@latest"
+"go$go_version" download
+
+if [ -x ~/go/bin/"go$go_version" ]; then
+  echo "Installed go $go_version"
+fi

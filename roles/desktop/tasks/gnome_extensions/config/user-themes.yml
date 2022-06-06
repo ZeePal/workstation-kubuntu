@@ -1,4 +1,0 @@
-- name: Configure "Full" dark theme
-  dconf:
-    key: /org/gnome/shell/extensions/user-theme/name
-    value: "'Yaru-dark'"

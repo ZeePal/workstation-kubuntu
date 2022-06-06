@@ -1,0 +1,8 @@
+- name: Install Cargo packages
+  cargo:
+    name:
+      - starship
+      - git-delta
+      - fd-find
+      - exa
+      - tealdeer

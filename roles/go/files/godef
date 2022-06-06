@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+if [ "$#" == "0" ]; then
+  echo "Usage: $0 GO_VERSION" >&2
+  exit 1
+fi
+go_version="${1:?}"
+
+if [ ! -f ~/go/bin/"go$go_version" ]; then
+  echo "ERROR: Go $go_version not installed." >&2
+  exit 1
+fi
+
+ln -sf ~/go/bin/"go$go_version" ~/bin/go

@@ -1,0 +1,11 @@
+- name: Remove default snaps
+  snap:
+    state: absent
+    name:
+      - firefox
+
+- name: Install snap apps
+  snap:
+    name:
+      - discord
+      - slack

@@ -1,67 +1,9 @@
-- name: Checking if Docker Rootless is installed
-  stat:
-    path: "/home/{{ primary_username }}/.config/systemd/user/docker.service"
-  register: docker_service_config
-
-- name: Install Docker Rootless
-  when: docker_service_config.stat.exists == False
-  block:
-    - name: Create Docker install folders
-      file:
-        state: directory
-        path: "{{ docker['storage']['archives'] }}/"
-        owner: root
-        group: root
-
-    - name: Download Docker
-      get_url:
-         url:  "{{ docker['archive'][item]['url'] }}"
-         dest: "{{ docker['storage']['archives'] }}/{{ item }}.tgz"
-         checksum: "sha512:{{ docker['archive'][item]['hash']['sha512'] }}"
-      with_items:
-        - docker
-        - rootless
-
-    - name: Extract Docker
-      unarchive:
-        src: "{{ docker['storage']['archives'] }}/{{ item }}.tgz"
-        dest: "{{ docker['storage']['binarys'] }}/"
-        extra_opts: '--strip-components=1'
-        owner: "{{ primary_username }}"
-        group: "{{ primary_username }}"
-      with_items:
-        - docker
-        - rootless
-
-
-- name: Setup Docker host envvar
-  blockinfile:
-    dest: "/home/{{ primary_username }}/.bashrc"
-    marker: "# {mark} Docker-Rootless"
-    block: |
-      export DOCKER_HOST=unix://$XDG_RUNTIME_DIR/docker.sock
-
-- name: Create Docker systemd folders
-  file:
-   state: directory
-   path: "/home/{{ primary_username }}/.config/systemd/user"
-   owner: "{{ primary_username }}"
-   group: "{{ primary_username }}"
-
-- name: Configure the Docker systemd service
-  template:
-    src: "{{ role_path }}/files/docker.service.j2"
-    dest: "/home/{{ primary_username }}/.config/systemd/user/docker.service"
-    owner: "{{ primary_username }}"
-    group: "{{ primary_username }}"
-    mode: u=rwx,go=rx
-
-- name: Start Docker service
-  become: true
-  become_user: "{{ primary_username }}"
+- name: Disable Root Docker service
   systemd:
-    scope: user
     name: docker
-    state: started
-    enabled: yes
-    daemon_reload: yes
+    state: stopped
+    enabled: false
+
+- import_tasks: as_user.yml
+  become: true
+  become_user: "{{ USER }}"

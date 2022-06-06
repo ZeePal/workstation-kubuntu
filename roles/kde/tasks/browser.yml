@@ -1,0 +1,16 @@
+- name: Set chrome as default browser, part 1
+  command: xdg-settings set default-web-browser google-chrome.desktop
+
+- name: Set chrome as default browser, part 2
+  kconfig:
+    file: ~/.config/mimeapps.list
+    groups: ["Default Applications"]
+    key: text/html
+    value: google-chrome.desktop
+
+- name: Set chrome as default browser, part 3
+  kconfig:
+    file: ~/.config/kdeglobals
+    groups: [General]
+    key: BrowserApplication
+    value: google-chrome.desktop

@@ -1,82 +1,8 @@
-- include: repos/main.yml
+- import_tasks: mirror.yml
+- import_tasks: repos/main.yml
 
-- name: Install apt packages
-  apt:
-    state: present
-    name:
-      - curl
-      - wget
-      - ansible
-      - ansible-lint
-      - python-apt
-      - python-setuptools
-      - ent
-      - jq
-      - fzf
-      - google-chrome-stable
-      - git
-      - meld
-      - python3-pip
-      - shellcheck
-      - tilix
-      - pwgen
-      - sysstat
-      - zip
-      - unzip
-      - vim
-      - vlock
-      - rsync
-      - build-essential
-      - apt-file
-      - software-properties-common
-      - ppa-purge
-      - powertop
-      - tlp
-      - tlp-rdw
-      - atom
-      - gpg
-      - golang-go
-      - uidmap
-      - dconf-editor
-      - gparted
-      - handbrake
-      - flameshot  # TODO: Test and revert to shutter if needed
-      - gimp
-      - neofetch
-      - kdenlive
-      - virtualbox
-      - inotify-tools
-      - lm-sensors
-      - mesa-utils
-      - pigz
-      - p7zip-full
-      - iotop
-      - iftop
-      - graphviz
-      - dos2unix
-      - whois
-      - geoip-bin
-      - remmina
-      - binutils-x86-64-linux-gnu
-      - gnome-shell-extension-prefs
-      - gnome-tweaks
-      - libssl-dev
-      - vlc
-      - nomacs
-      - ripgrep
-      - htop
-      - sqlformat
-      - traceroute
-      - oathtool
-      - screenfetch
-      - signal-desktop
-      - net-tools
-      - pv
-      - moreutils
+- name: Refresh apt if changed
+  meta: flush_handlers
 
-- name: Lock required package versions
-  dpkg_selections:
-    name: "{{ item }}"
-    selection: hold
-  with_items:
-    - atom
+- import_tasks: install.yml
+- import_tasks: update.yml

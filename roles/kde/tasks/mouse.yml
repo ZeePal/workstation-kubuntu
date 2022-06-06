@@ -1,0 +1,9 @@
+- name: No Mouse Accel in KDE
+  kconfig:
+    file: ~/.config/kcminputrc
+    groups: [Mouse]
+    key: "{{ item.key }}"
+    value: "{{ item.value }}"
+  with_dict:
+    XLbInptAccelProfileFlat: "true"
+    XLbInptPointerAcceleration: "0"

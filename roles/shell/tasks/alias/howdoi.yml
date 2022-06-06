@@ -1,0 +1,12 @@
+- name: Setup Howdoi command aliases
+  blockinfile:
+    path: "{{ HOME }}/.bash_aliases"
+    marker: "# {mark} howdoi"
+    create: true
+    mode: u=rw,go=r
+    block: |
+      alias h="howdoi -c"
+      alias hm="h -n5"
+      alias hs="h --save"
+      alias hv="h --view"
+      alias hr="h --remove"

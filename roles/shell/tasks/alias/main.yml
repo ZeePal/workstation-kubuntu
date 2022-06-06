@@ -1,6 +1,7 @@
-- include: git.yml
-- include: misc.yml
+- import_tasks: git.yml
+- import_tasks: misc.yml
 
-- include: _cd.yml
-- include: gcd.yml
-- include: tcd.yml
+- import_tasks: _cd.yml
+- import_tasks: gcd.yml
+- import_tasks: tcd.yml
+- import_tasks: howdoi.yml

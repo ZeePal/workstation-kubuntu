@@ -1,0 +1,34 @@
+- import_tasks: theme.yml
+  become: true
+  become_user: "{{ USER }}"
+
+- import_tasks: panel.yml
+  become: true
+  become_user: "{{ USER }}"
+
+- import_tasks: browser.yml
+  become: true
+  become_user: "{{ USER }}"
+
+- import_tasks: mouse.yml
+  become: true
+  become_user: "{{ USER }}"
+
+- import_tasks: misc.yml
+  become: true
+  become_user: "{{ USER }}"
+
+- name: Setup avatar
+  copy:
+    src: /usr/share/plasma/avatars/photos/Astronaut.png
+    dest: "/var/lib/AccountsService/icons/{{ USER }}"
+    owner: root
+    group: root
+    mode: u=rw,g=r,o=r
+    force: false
+  register: kde_init_setup # using as marker of first time execution
+
+- import_tasks: init.yml
+  when: kde_init_setup.changed
+  become: true
+  become_user: "{{ USER }}"

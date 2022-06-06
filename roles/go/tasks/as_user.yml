@@ -1,0 +1,6 @@
+- name: Setup $PATH for $HOME/go/bin
+  blockinfile:
+    dest: "{{ HOME }}/.bashrc"
+    marker: "# {mark} GoBin"
+    block: |
+      export PATH="$PATH:$HOME/go/bin"

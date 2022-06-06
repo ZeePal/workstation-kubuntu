@@ -1,0 +1,73 @@
+- name: Setup vte for Tilix
+  blockinfile:
+    path: "{{ HOME }}/.bashrc"
+    insertbefore: "# BEGIN Eternal Bash History"
+    marker: "# {mark} Tilix Config"
+    block: |
+      if [ $TILIX_ID ] || [ $VTE_VERSION ]; then
+        source /etc/profile.d/vte.sh
+      fi
+
+- name: Configure Tilix
+  dconf:
+    key: "/com/gexperts/Tilix/{{ item.key }}"
+    value: "{{ item.value }}"
+  with_dict:
+    middle-click-close: "true"
+    control-scroll-zoom: "true"
+    copy-on-select: "true"
+    window-style: "'disable-csd'"
+    terminal-title-style: "'small'"
+    theme-variant: "'dark'"
+
+- name: Configure Tilix Profile
+  dconf:
+    key: "/com/gexperts/Tilix/profiles/2b7c4080-0ddd-46c5-8f23-563fd3ba789d/{{ item.key }}"
+    value: "{{ item.value }}"
+  with_dict:
+    # Material
+    background-color: "'#263238'"
+    badge-color-set: "false"
+    bold-color-set: "false"
+    cursor-colors-set: "false"
+    foreground-color: "'#A1B0B8'"
+    highlight-colors-set: "false"
+    palette: '"[''#252525'', ''#FF5252'', ''#C3D82C'', ''#FFC135'', ''#42A5F5'', ''#D81B60'', ''#00ACC1'', ''#F5F5F5'', ''#708284'', ''#FF5252'', ''#C3D82C'', ''#FFC135'', ''#42A5F5'', ''#D81B60'', ''#00ACC1'', ''#F5F5F5'']"'
+    scrollback-lines: 81920
+    use-theme-colors: "false"
+
+- name: Set Tilix as default Terminal, part 2
+  become: true
+  become_user: "{{ USER }}"
+  kconfig:
+    groups: [General]
+    key: "{{ item.key }}"
+    value: "{{ item.value }}"
+  with_dict:
+    TerminalApplication: tilix
+    TerminalService: com.gexperts.Tilix.desktop
+
+- name: Get CtrlAltR shortcut config
+  kconfig:
+    file: ~/.config/kglobalshortcutsrc
+    groups: [plasmashell]
+    key: repeat_action
+  register: kde_ctrl_alt_r
+
+- name: Remove CtrlAltR shortcut conflict
+  kconfig:
+    file: ~/.config/kglobalshortcutsrc
+    groups: [plasmashell]
+    key: repeat_action
+    value: "none,{{ kde_ctrl_alt_r.value.split(',', 1)[1] }}"
+
+- name: Update CtrlAltT to Tilix
+  replace:
+    path: "{{ HOME }}/.config/khotkeysrc"
+    regexp: "{{ item.key }}"
+    replace: "{{ item.value }}"
+  with_dict:
+    Name=Launch Konsole: Name=Launch Tilix
+    CommandURL=org\.kde\.konsole\.desktop: CommandURL=com.gexperts.Tilix.desktop
+    Name=Run Konsole: Name=Run Tilix
+    CommandURL=konsole: CommandURL=tilix

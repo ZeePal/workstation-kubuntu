@@ -1,5 +1,0 @@
-- name: Install Slack
-  snap:
-    state: present
-    name: slack
-    classic: true

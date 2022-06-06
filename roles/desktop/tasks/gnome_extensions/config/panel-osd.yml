@@ -1,9 +1,0 @@
-- name: Configure Notification Position X
-  dconf:
-    key: /org/gnome/shell/extensions/panel-osd/x-pos
-    value: "92.0"
-
-- name: Configure Notification Position Y
-  dconf:
-    key: /org/gnome/shell/extensions/panel-osd/y-pos
-    value: "93.0"

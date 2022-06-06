@@ -1,14 +1,12 @@
 - name: Configure Meld as the difftool for git
   blockinfile:
-    path: "/home/{{ primary_username }}/.gitconfig"
+    path: "{{ HOME }}/.gitconfig"
     marker: "# {mark} meld"
-    create: yes
-    owner: "{{ primary_username }}"
-    group: "{{ primary_username }}"
+    create: true
+    owner: "{{ USER }}"
+    group: "{{ USER }}"
     mode: u=rw,go=r
     block: |
-      [diff]
-          tool = meld
       [difftool]
           prompt = false
       [difftool "meld"]
@@ -16,14 +14,14 @@
 
 - name: Configure GPG signing
   blockinfile:
-    path: "/home/{{ primary_username }}/.gitconfig"
+    path: "{{ HOME }}/.gitconfig"
     marker: "# {mark} gpg"
-    create: yes
-    owner: "{{ primary_username }}"
-    group: "{{ primary_username }}"
+    create: true
+    owner: "{{ USER }}"
+    group: "{{ USER }}"
     mode: u=rw,go=r
     block: |
       [commit]
-      	gpgsign = true
+        gpgsign = true
       [tag]
-      	gpgsign = true
+        gpgsign = true

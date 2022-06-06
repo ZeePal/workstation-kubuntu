@@ -1,0 +1,37 @@
+- name: Get Current activity
+  kconfig:
+    file: ~/.config/kactivitymanagerdrc
+    groups: [main]
+    key: currentActivity
+  register: kde_current_activity
+
+- name: Start menu favorites, part 1
+  command: >
+    sqlite3 ~/.local/share/kactivitymanagerd/resources/database
+    'DELETE FROM ResourceLink
+    WHERE usedActivity=":global"
+    AND initiatingAgent="org.kde.plasma.favorites.applications";'
+
+- name: Start menu favorites, part 2
+  command: >
+    sqlite3 ~/.local/share/kactivitymanagerd/resources/database
+    'INSERT OR IGNORE INTO ResourceLink (usedActivity, initiatingAgent, targettedResource) VALUES
+    {{ kde['favorites']['start_menu'] | map('regex_replace', '^(.*)$', '(":global", "org.kde.plasma.favorites.applications", "\1")') | join(", ") }}
+    ;'
+
+- name: Start menu favorites, part 3
+  kconfig:
+    file: ~/.config/kactivitymanagerd-statsrc
+    groups: ["Favorites-org.kde.plasma.kickoff.favorites.instance-3-{{ item }}"]
+    key: ordering
+    value: "{{ kde['favorites']['start_menu'] | join(',') }}"
+  with_items:
+    - global
+    - "{{ kde_current_activity.value }}"
+
+- name: Task bar icons
+  kconfig:
+    file: ~/.config/plasma-org.kde.plasma.desktop-appletsrc
+    groups: [Containments, "2", Applets, "5", Configuration, General]
+    key: launchers
+    value: "{{ kde['favorites']['task_bar'] | join(',') }}"

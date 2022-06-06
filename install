@@ -1,4 +1,9 @@
 #!/usr/bin/env bash
+set -euo pipefail
 
-SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
-sudo "$SCRIPT_DIR/run_ansible_roles_in_parallel" -u "$USER" "$@"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" >/dev/null 2>&1 && pwd)"
+sudo "$SCRIPT_DIR/run_ansible_roles_in_parallel" \
+  --user "$USER" \
+  --uid "$UID" \
+  --home "$HOME" \
+  "$@"

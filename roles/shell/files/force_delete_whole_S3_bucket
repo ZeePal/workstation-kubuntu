@@ -1,0 +1,31 @@
+#!/usr/bin/env python3
+import sys
+
+import boto3
+
+
+def main():
+    if len(sys.argv) != 2:
+        sys.exit(f"Usage: {sys.argv[0]} bucket_name")
+
+    bucket = boto3.resource("s3").Bucket(sys.argv[1])
+    print(f"Deleting S3 Bucket Object Versions: {bucket.name}")
+    result = bucket.object_versions.delete()
+
+    printed_error_msg = False
+    for page in result:
+        errors = page.get("Errors", [])
+        if errors and not printed_error_msg:
+            print("ERROR: Unable to delete all object versions:")
+            printed_error_msg = True
+        for e in errors:
+            print(e)
+    if printed_error_msg:
+        sys.exit(1)
+
+    print(f"Deleting empty S3 Bucket: {bucket.name}")
+    bucket.delete()
+
+
+if __name__ == "__main__":
+    main()

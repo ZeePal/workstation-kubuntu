@@ -1,0 +1,14 @@
+- name: Create Bat config folder
+  file:
+    state: directory
+    path: "{{ HOME }}/.config/bat/"
+    mode: u=rwx,go=rx
+
+- name: Configure Bat
+  blockinfile:
+    path: "{{ HOME }}/.config/bat/config"
+    marker: "# {mark} theme"
+    create: true
+    mode: u=rw,go=r
+    block: |
+      --theme=TwoDark

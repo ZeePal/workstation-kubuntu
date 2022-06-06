@@ -1,0 +1,3 @@
+- name: Refresh apt
+  apt:
+    update_cache: true

@@ -1,0 +1,27 @@
+- name: Restrict access to AWS secrets
+  file:
+    path: "{{ HOME }}/.aws"
+    recurse: true
+    state: directory
+    owner: "{{ USER }}"
+    group: "{{ USER }}"
+    mode: u=rwX,go=
+
+- name: Setup AWS cli aliases
+  blockinfile:
+    path: "{{ HOME }}/.bash_aliases"
+    marker: "# {mark} AWS"
+    create: true
+    owner: "{{ USER }}"
+    group: "{{ USER }}"
+    mode: u=rw,go=r
+    block: |
+      alias a=aws
+
+- name: Setup AWS cli completers
+  blockinfile:
+    dest: "{{ HOME }}/.bashrc"
+    marker: "# {mark} AWS Completer"
+    block: |
+      complete -C '/usr/local/bin/aws_completer' aws
+      complete -C '/usr/local/bin/aws_completer' a

@@ -1,0 +1,9 @@
+- name: Install misc tools
+  copy:
+    src: "{{ role_path }}/files/{{ item }}"
+    dest: "{{ HOME }}/bin/{{ item }}"
+    mode: u=rwx,go=rx
+  with_items:
+    - get_aws_sso_profiles
+    - force_delete_whole_S3_bucket
+    - jgrep

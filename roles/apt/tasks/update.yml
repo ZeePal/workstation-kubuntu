@@ -1,0 +1,4 @@
+- name: Update apt packages
+  apt:
+    upgrade: safe
+    cache_valid_time: 43200 # 12 hours

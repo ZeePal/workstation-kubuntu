@@ -1,0 +1,31 @@
+- name: Create AWS cli install folders
+  file:
+    state: directory
+    path: /opt/aws/cli/
+    mode: u=rwX,go=rX
+
+- name: Download AWS cli gpg key
+  shell:
+    cmd: |
+      curl https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html \
+        |sed -r -n '/-----BEGIN PGP PUBLIC KEY BLOCK-----/,/-----END PGP PUBLIC KEY BLOCK-----/p' \
+        |sed -r 's/^.*(-----BEGIN PGP PUBLIC KEY BLOCK-----)/\1/;s/(-----END PGP PUBLIC KEY BLOCK-----).*$/\1/' > /opt/aws/cli/awscli.gpg.asc
+    creates: /opt/aws/cli/awscli.gpg
+
+- name: Get AWS cli gpg key hash
+  stat:
+    path: /opt/aws/cli/awscli.gpg.asc
+    get_checksum: true
+    checksum_algorithm: sha512
+  register: awscli_gpg_key_hash
+
+- name: Verify AWS cli gpg key hash
+  when: awscli_gpg_key_hash.stat.checksum != '2f85eb35b7b63eb435b4437d019b0db9a742d9d9c7a13f241a64b650c51e2e1b3a88460ece4a4abeeb123cf2df96274a0045e93559c973d5874ad884feef9951'
+  fail:
+    msg: AWS cli gpg key hash doesnt match the expected hash
+
+- name: Build AWS cli gpg keyring
+  command:
+    cmd: |
+      gpg --no-default-keyring --keyring /opt/aws/cli/awscli.gpg --import /opt/aws/cli/awscli.gpg.asc
+    creates: /opt/aws/cli/awscli.gpg

@@ -1,0 +1,25 @@
+- name: Install the Google Cloud apt repository key
+  apt_key:
+    state: present
+    keyring: /etc/apt/keyrings/google-cloud.gpg
+    id: 7F92E05B31093BEF5A3C2D38FEEA9169307EA071
+    url: https://packages.cloud.google.com/apt/doc/apt-key.gpg
+
+- name: Install restrictions for Google Cloud apt repo
+  copy:
+    dest: /etc/apt/preferences.d/50-google-cloud
+    owner: root
+    group: root
+    mode: u=rw,go=r
+    content: |
+      Package: *
+      Pin: origin packages.cloud.google.com
+      Pin-Priority: 100
+
+- name: Install the Google Cloud apt repository
+  apt_repository:
+    state: present
+    repo: deb [arch=amd64 signed-by=/etc/apt/keyrings/google-cloud.gpg] http://packages.cloud.google.com/apt cloud-sdk main
+    filename: google-cloud
+    update_cache: false
+  notify: Refresh apt

@@ -1,10 +1,8 @@
 - name: Setup Git command aliases
   blockinfile:
-    path: "/home/{{ primary_username }}/.bash_aliases"
+    path: "{{ HOME }}/.bash_aliases"
     marker: "# {mark} git"
-    create: yes
-    owner: "{{ primary_username }}"
-    group: "{{ primary_username }}"
+    create: true
     mode: u=rw,go=r
     block: |
       alias g=git

@@ -1,15 +1,15 @@
 #!/usr/bin/env bash
 set -euo pipefail
-# Startup application command for testing:
-## gnome-terminal -- /bin/bash -c '/mnt/test/dev_bootstrap_install;exec bash -i'
 
-GIT_FOLDER=~/git
+GIT_FOLDER=~/git/ZeePal
 REPO=/mnt/test
-REPO_NAME="$(basename -s .git "$REPO")"
-
+REPO_NAME=workstation-kubuntu
 
 sudo apt update
-sudo apt install -y ansible git
+sudo apt install -y software-properties-common
+sudo add-apt-repository --yes --update ppa:ansible/ansible
+
+sudo apt install -y ansible git python3-apt curl build-essential
 
 if [[ ! -e $GIT_FOLDER ]]; then
   mkdir -p "$GIT_FOLDER"
@@ -18,4 +18,5 @@ cd "$GIT_FOLDER"
 rsync -a "$REPO/" "$GIT_FOLDER/$REPO_NAME/"
 
 cd "$REPO_NAME"
-exec ./install
+./install
+reboot

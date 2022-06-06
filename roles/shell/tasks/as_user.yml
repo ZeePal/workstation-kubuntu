@@ -1,0 +1,11 @@
+- import_tasks: alias/main.yml
+
+- import_tasks: history.yml
+- import_tasks: home.yml
+- import_tasks: secrets.yml
+- import_tasks: ripgrep.yml
+- import_tasks: black.yml
+- import_tasks: less.yml
+- import_tasks: gclone.yml
+- import_tasks: docker_shell.yml
+- import_tasks: misc_tools.yml

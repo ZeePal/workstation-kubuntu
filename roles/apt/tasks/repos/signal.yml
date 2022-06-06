@@ -1,12 +1,27 @@
 - name: Install the Signal apt repository key
   apt_key:
     state: present
+    keyring: /etc/apt/keyrings/signal.gpg
     id: DBA36B5181D0C816F630E889D980A17457F6FB06
     url: https://updates.signal.org/desktop/apt/keys.asc
+
+
+- name: Install restrictions for Signal apt repo
+  copy:
+    dest: /etc/apt/preferences.d/50-signal
+    owner: root
+    group: root
+    mode: u=rw,go=r
+    content: |
+      Package: *
+      Pin: origin updates.signal.org
+      Pin-Priority: 100
+
 
 - name: Install the Signal apt repository
   apt_repository:
     state: present
-    repo: deb [signed-by=DBA36B5181D0C816F630E889D980A17457F6FB06 arch=amd64] https://updates.signal.org/desktop/apt xenial main
+    repo: deb [arch=amd64 signed-by=/etc/apt/keyrings/signal.gpg] https://updates.signal.org/desktop/apt xenial main
+    filename: signal
     update_cache: no
-  register: apt_repo_signal
+  notify: Refresh apt

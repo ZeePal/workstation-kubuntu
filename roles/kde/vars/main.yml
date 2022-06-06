@@ -1,0 +1,12 @@
+kde:
+  favorites:
+    task_bar:
+      - preferred://filemanager
+      - preferred://browser
+      - applications:com.gexperts.Tilix.desktop
+      - applications:code.desktop
+    start_menu:
+      - applications:discord_discord.desktop
+      - applications:signal-desktop.desktop
+      - applications:org.kde.plasma-systemmonitor.desktop
+      - applications:systemsettings.desktop

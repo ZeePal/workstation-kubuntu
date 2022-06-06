@@ -1,5 +1,0 @@
-- name: Install Discord
-  snap:
-    state: present
-    name: discord
-    classic: true

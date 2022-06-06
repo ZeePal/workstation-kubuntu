@@ -1,59 +1,11 @@
-- name: Checking if Git-Secrets is installed
-  stat:
-    path: "{{ apps['git-secrets']['script']['install'] }}"
-  register: git_secrets
+- name: Install Git-Secrets Script
+  get_url:
+    url: https://raw.githubusercontent.com/awslabs/git-secrets/master/git-secrets
+    dest: /usr/local/bin/git-secrets
+    # no updates in ~4years
+    checksum: sha512:5ad747f1063e4b91a5960b185435beb62cd662967bb881a85a6327b5e3e8d9037ce451c60e28c4b43f3da55980fc35578cb031cf76b93dad0dd8b0d59c495db8
+    mode: u=rwx,go=rx
 
-- name: Install Git-Secrets
-  when: git_secrets.stat.exists == False
-  block:
-    - name: Install Git-Secrets Script
-      get_url:
-        url:  "{{ apps['git-secrets']['script']['url'] }}"
-        dest: "{{ apps['git-secrets']['script']['install'] }}"
-        owner: root
-        group: root
-        mode: u=rwx,go=rx
-
-    - name: Create Git Template folder for Git-Secrets
-      file:
-        state: directory
-        path: "/home/{{ primary_username }}/.git-templates/git-secrets"
-        owner: "{{ primary_username }}"
-        group: "{{ primary_username }}"
-        mode: u=rwx,go=rx
-
-    - name: Install Git-Secrets into Git Template Folder
-      become: true
-      become_user: "{{ primary_username }}"
-      command: git secrets --install "/home/{{ primary_username }}/.git-templates/git-secrets"
-      args:
-        creates: "/home/{{ primary_username }}/.git-templates/git-secrets/hooks/pre-commit"
-
-    - name: Install Git-Secrets Config
-      become: true
-      become_user: "{{ primary_username }}"
-      command: git secrets --register-aws --global
-
-    - name: Git to use Git-Secrets by default
-      blockinfile:
-        path: "/home/{{ primary_username }}/.gitconfig"
-        marker: "# {mark} Git-Secrets"
-        create: yes
-        owner: "{{ primary_username }}"
-        group: "{{ primary_username }}"
-        mode: u=rw,go=r
-        block: |
-          [init]
-          	templateDir = /home/{{ primary_username }}/.git-templates/git-secrets
-
-
-- name: Configure Custom Secret Patterns
+- import_tasks: as_user.yml
   become: true
-  become_user: "{{ primary_username }}"
-  command: git secrets --add --global "{{ item }}"
-  register: git_secrets_custom
-  changed_when: git_secrets_custom.rc == 0
-  failed_when: git_secrets_custom.rc > 1
-  with_items:
-    - '\-----BEGIN [A-Z ]*PRIVATE KEY-----'  # x509 Private Keys (Inc GCP Service Keys)
-    - 'ya29'  # Current GCP Access Token Prefix
+  become_user: "{{ USER }}"

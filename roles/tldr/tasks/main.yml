@@ -1,13 +1,12 @@
-- name: Install tldr (tealdeer)
-  become: true
-  become_user: "{{ primary_username }}"
-  command: "'/home/{{ primary_username }}/.cargo/bin/cargo' install tealdeer"
-  args:
-    creates: "/home/{{ primary_username }}/.cargo/bin/tldr"
+- name: Check for recent tldr cache updates
+  find:
+    paths: "{{ HOME }}/.cache/tealdeer/tldr-pages/"
+    patterns: "index.json"
+    age: -12h
+  register: tldr_cache_last_update
 
-- name: Update tealdeer cache
+- name: Update tldr cache
   become: true
-  become_user: "{{ primary_username }}"
-  command: "/home/{{ primary_username }}/.cargo/bin/tldr --update"
-  args:
-    creates: "/home/{{ primary_username }}/.cache/tealdeer/tldr-master"
+  become_user: "{{ USER }}"
+  command: "{{ HOME }}/.cargo/bin/tldr --update"
+  when: not tldr_cache_last_update.files # If not recently updated

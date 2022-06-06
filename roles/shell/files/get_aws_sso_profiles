@@ -1,0 +1,127 @@
+#!/usr/bin/env python3
+import functools
+import json
+import os
+import threading
+from glob import glob
+from multiprocessing.pool import ThreadPool
+from pathlib import Path
+
+import boto3
+import botocore
+
+THREAD_COUNT = int(os.getenv("THREAD_COUNT", "10"))
+DEFAULT_ROLE_PREFERENCES = [
+    "administrator",
+    "admin",
+    "devops",
+]
+
+
+def main():
+    start_url, token = get_aws_sso_config()
+    sso_client = get_aws_sso_client()
+    profiles = {}
+    worker = functools.partial(get_aws_account_sso_roles, token=token)
+    with ThreadPool(THREAD_COUNT) as pool:
+        for account_name, account_id, roles in pool.imap_unordered(worker, get_aws_accounts(sso_client, token)):
+            if account_name not in profiles:
+                profiles[account_name] = {"id": account_id, "roles": set()}
+            profiles[account_name]["roles"].update(roles)
+        pool.close()
+        pool.join()
+    print_profiles(start_url, profiles, sso_client.meta.region_name)
+
+
+def print_profiles(start_url, profiles, region):
+    for account, details in sorted(profiles.items()):
+        default_role = get_default_role(details["roles"])
+        if default_role:
+            print(
+                f"""[profile {account}]
+sso_start_url = {start_url}
+sso_region = {region}
+sso_account_id = {details['id']}
+sso_role_name = {default_role}
+region = {region}
+"""
+            )
+        for role in sorted(details["roles"]):
+            print(
+                f"""[profile {account}-{role}]
+sso_start_url = {start_url}
+sso_region = {region}
+sso_account_id = {details['id']}
+sso_role_name = {role}
+region = {region}
+"""
+            )
+
+
+# {
+#     'accountId': 'string',
+#     'accountName': 'string',
+#     'emailAddress': 'string'
+# }
+def get_aws_account_sso_roles(aws_account, token):
+    thread = threading.local()
+    if "client" not in thread.__dict__:
+        thread.client = get_aws_sso_client()
+
+    paginator = thread.client.get_paginator("list_account_roles").paginate(
+        accessToken=token,
+        accountId=aws_account["accountId"],
+    )
+    return (
+        aws_account["accountName"],
+        aws_account["accountId"],
+        {role["roleName"] for page in paginator for role in page["roleList"]},
+    )
+
+
+def get_aws_sso_config():
+    sso_cache = Path.home() / ".aws/sso/cache"
+    for file_path in glob(f"{sso_cache.as_posix()}/*.json"):
+        try:
+            with open(file_path, "r") as file:
+                data = json.load(file)
+            start_url = data.get("startUrl")
+            token = data.get("accessToken")
+            if start_url and token:
+                return start_url, token
+        except Exception:
+            pass
+    raise Exception("Unable to locate AWS SSO Token in ~/.aws/sso/cache/*.json:accessToken")
+
+
+def get_aws_accounts(client, token):
+    paginator = client.get_paginator("list_accounts").paginate(accessToken=token)
+    for page in paginator:
+        for account in page["accountList"]:
+            yield account
+
+
+# AWS SSO API has its own token so don't do the normal hunting please
+def get_aws_sso_client():
+    return boto3.session.Session(
+        aws_access_key_id="IGNORE",
+        aws_secret_access_key="IGNORE",
+    ).client("sso")
+
+
+def get_default_role(roles):
+    if len(roles) == 0:
+        return None
+
+    lowercase_roles = {role.lower(): role for role in roles}
+    for role_preference in DEFAULT_ROLE_PREFERENCES:
+        role = lowercase_roles.get(role_preference, None)
+        if role is not None:
+            return role
+
+    # Default to first role from sorted order
+    return min(roles)
+
+
+if __name__ == "__main__":
+    main()

@@ -1,0 +1,21 @@
+# TODO: Find a more secure way to install rust with the rustup manager
+- name: Installing Rust
+  shell: curl --proto '=https' --tlsv1.3 -sSf https://sh.rustup.rs | sh -s -- -y -c rls rust-src
+  args:
+    creates: "{{ HOME }}/.cargo/bin/rustup"
+
+- name: Get Rust version
+  command: "{{ HOME }}/.cargo/bin/rustc --version"
+  check_mode: false # always run the task
+  register: rust_version
+  changed_when: false
+- name: Downgrade from rust 1.61.0
+  when: '" 1.61.0 " in rust_version.stdout'
+  command: "{{ HOME }}/.cargo/bin/rustup default 1.60.0"
+
+- name: Setup Rust PATH
+  blockinfile:
+    path: "{{ HOME }}/.bashrc"
+    marker: "# {mark} Rust"
+    block: |
+      export PATH="$HOME/.cargo/bin:$PATH"

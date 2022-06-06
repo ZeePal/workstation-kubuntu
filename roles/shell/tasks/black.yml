@@ -1,0 +1,7 @@
+- name: black config
+  copy:
+    dest: "{{ HOME }}/.config/black"
+    mode: u=rw,go=r
+    content: |
+      [tool.black]
+      line-length = 120
