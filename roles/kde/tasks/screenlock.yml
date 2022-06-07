@@ -1,0 +1,6 @@
+- name: Screenlock timer
+  kconfig:
+    file: ~/.config/kscreenlockerrc
+    groups: [Daemon]
+    key: Timeout
+    value: 10 # minutes

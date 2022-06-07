@@ -1,3 +1,7 @@
+- import_tasks: screenlock.yml
+  become: true
+  become_user: "{{ USER }}"
+
 - import_tasks: theme.yml
   become: true
   become_user: "{{ USER }}"
@@ -11,6 +15,10 @@
   become_user: "{{ USER }}"
 
 - import_tasks: mouse.yml
+  become: true
+  become_user: "{{ USER }}"
+
+- import_tasks: powermanagement.yml
   become: true
   become_user: "{{ USER }}"
 

@@ -1,0 +1,29 @@
+- name: Power Management AC Buttons
+  kconfig:
+    file: ~/.config/powermanagementprofilesrc
+    groups: [AC, HandleButtonEvents]
+    key: "{{ item.key }}"
+    value: "{{ item.value }}"
+  with_dict:
+    lidAction: "32"
+    powerButtonAction: "8"
+
+- name: Power Management Battery Buttons
+  kconfig:
+    file: ~/.config/powermanagementprofilesrc
+    groups: [Battery, HandleButtonEvents]
+    key: "{{ item.key }}"
+    value: "{{ item.value }}"
+  with_dict:
+    lidAction: "32"
+    powerButtonAction: "8"
+
+- name: Power Management Low Battery Buttons
+  kconfig:
+    file: ~/.config/powermanagementprofilesrc
+    groups: [LowBattery, HandleButtonEvents]
+    key: "{{ item.key }}"
+    value: "{{ item.value }}"
+  with_dict:
+    lidAction: "32"
+    powerButtonAction: "8"
