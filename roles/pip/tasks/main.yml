@@ -27,3 +27,11 @@
       - jmespath
       - cfn-flip
       - howdoi
+      - prospector[with_everything]
+      - bandit
+      - mypy
+      - boto3-stubs
+      - types-requests
+      - types-python-dateutil
+      - types-cachetools
+      - types-PyYAML

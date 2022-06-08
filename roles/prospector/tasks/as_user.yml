@@ -1,0 +1,56 @@
+- name: Create prospector config folder
+  file:
+    state: directory
+    path: "{{ HOME }}/.config/ZeePal/python/prospector"
+    mode: u=rwx,go=rx
+
+- name: Main prospector config
+  copy:
+    dest: "{{ HOME }}/.config/ZeePal/python/prospector/zeepal.yaml"
+    mode: u=rw,go=r
+    content: |
+      inherits:
+        - default
+
+      strictness: veryhigh
+      max-line-length: 159
+
+      bandit:
+        run: true
+
+      dodgy:
+        run: true
+
+      mccabe:
+        run: true
+
+      mypy:
+        run: true
+        options:
+          ignore-missing-imports: true
+
+      pycodestyle:
+        run: true
+
+      pyflakes:
+        run: true
+
+      pylint:
+        run: true
+
+      pyroma:
+        run: true
+
+      vulture:
+        run: true
+
+- name: Vscode prospector config
+  copy:
+    dest: "{{ HOME }}/.config/ZeePal/python/prospector/zeepal-vscode.yaml"
+    mode: u=rw,go=r
+    content: |
+      inherits:
+        - zeepal
+
+      vulture:
+        run: false  # vscode runs for 1 file at a time which doesnt give enough context
