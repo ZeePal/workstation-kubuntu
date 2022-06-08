@@ -78,6 +78,6 @@
       - terraform
       - parallel
       - code # VSCode
-      - ipref3
+      - iperf3
       - gnome-keyring
       - seahorse
