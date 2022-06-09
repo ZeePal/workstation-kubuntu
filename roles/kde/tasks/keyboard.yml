@@ -1,0 +1,6 @@
+- name: NumLock on
+  kconfig:
+    file: ~/.config/kcminputrc
+    groups: [Keyboard]
+    key: NumLock
+    value: "0"
