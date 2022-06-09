@@ -22,6 +22,10 @@
   become: true
   become_user: "{{ USER }}"
 
+- import_tasks: alt_tab.yml
+  become: true
+  become_user: "{{ USER }}"
+
 - import_tasks: powermanagement.yml
   become: true
   become_user: "{{ USER }}"

@@ -1,0 +1,9 @@
+- name: Change Alt tab'er
+  kconfig:
+    file: ~/.config/kwinrc
+    groups: [TabBox]
+    key: "{{ item.key }}"
+    value: "{{ item.value }}"
+  with_dict:
+    ApplicationsMode: "1"
+    LayoutName: "org.kde.breezedark.desktop"
