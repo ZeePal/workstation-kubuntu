@@ -31,6 +31,8 @@
 
       pycodestyle:
         run: true
+        disable:
+          - E302
 
       pyflakes:
         run: true
