@@ -3,7 +3,6 @@ import re
 
 from ansible.module_utils.basic import AnsibleModule
 
-
 PACKAGE_PATTERN = re.compile(r"^(\S+)$", re.MULTILINE)
 
 
