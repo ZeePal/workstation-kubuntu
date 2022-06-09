@@ -30,7 +30,7 @@
       - prospector[with_everything]
       - bandit
       - mypy
-      - boto3-stubs
+      - boto3-stubs[all]
       - types-requests
       - types-python-dateutil
       - types-cachetools
