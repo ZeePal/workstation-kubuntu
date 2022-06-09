@@ -38,16 +38,3 @@
     state: directory
     path: "{{ HOME }}/.config/autostart"
     mode: u=rwx,go=rx
-
-- name: Prompt for KWallet GPG password on login
-  copy:
-    dest: "{{ HOME }}/.config/autostart/kwallet-query.desktop"
-    mode: u=rw,go=r
-    content: |
-      [Desktop Entry]
-      Exec=kwallet-query -l kdewallet
-      Icon=
-      Name=kwallet-query
-      Path=
-      Terminal=False
-      Type=Application
