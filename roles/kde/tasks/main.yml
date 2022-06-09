@@ -44,6 +44,12 @@
     force: false
   register: kde_init_setup # using as marker of first time execution
 
+- name: No onscreen keyboard to login
+  lineinfile:
+    name: /etc/sddm.conf
+    line: InputMethod=
+    state: present
+
 - import_tasks: init.yml
   when: kde_init_setup.changed
   become: true
