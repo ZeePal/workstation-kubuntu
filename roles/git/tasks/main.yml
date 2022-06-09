@@ -25,3 +25,19 @@
         gpgsign = true
       [tag]
         gpgsign = true
+
+- name: Git config folder
+  file:
+    state: directory
+    path: "{{ HOME }}/.config/git"
+    owner: "{{ USER }}"
+    group: "{{ USER }}"
+    mode: u=wrx,go=rx
+
+- name: Fallback .gitignore
+  copy:
+    src: "{{ role_path }}/files/ignore"
+    dest: "{{ HOME }}/.config/git/ignore"
+    owner: "{{ USER }}"
+    group: "{{ USER }}"
+    mode: u=rwx,go=rx
