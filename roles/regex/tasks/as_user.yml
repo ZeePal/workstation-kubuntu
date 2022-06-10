@@ -1,0 +1,23 @@
+- name: Create regex folder
+  file:
+    state: directory
+    path: "{{ HOME }}/regex/"
+    mode: u=rwx,go=rx
+
+- name: Install compilere
+  copy:
+    dest: "{{ HOME }}/bin/compilere"
+    mode: u=rwx,go=rx
+    content: "{{ lookup('file', '{{ role_path }}/files/compilere') }}"
+
+- name: Copy verbose regexes
+  copy:
+    dest: "{{ HOME }}/regex/.{{ item }}"
+    mode: u=rwx,go=rx
+    content: "{{ lookup('file', 're/{{ item }}') }}"
+  with_items: "{{ lookup('fileglob', 're/*', wantlist=True) | map('basename') | list }}"
+  register: regexes_updated
+
+- name: Compile regexes
+  when: regexes_updated.changed
+  command: "{{ HOME }}/bin/compilere"

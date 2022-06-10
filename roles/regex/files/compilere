@@ -1,0 +1,78 @@
+#!/usr/bin/env python3
+from glob import glob
+from pathlib import Path
+import re
+
+# "Compile" verbose regex's (~/regex/.*) into non-verbose regex's (~/regex/*)
+REGEX_FOLDER = Path.home() / "regex"
+
+
+def main():
+    for filename in glob(f"{REGEX_FOLDER}/.*"):
+        print(render(REGEX_FOLDER / filename))
+
+
+def render(path: Path) -> str:
+    verbose = "".join(_render(path))
+    return pcre_detidy(verbose)
+
+
+def _render(path: Path) -> list[str]:
+    parsed = []
+    with open(path, encoding="utf-8") as file:
+        for line in file:
+            if line.startswith("#include: "):
+                include_path = line.rstrip().split(" ", 1)[-1]
+                parsed.extend(_render(path.parent / f".{include_path}"))
+                continue
+            parsed.append(line)
+
+    return parsed
+
+
+# Source:
+# https://stackoverflow.com/questions/35640871/is-is-possible-to-clean-a-verbose-python-regex-before-printing-it/35641837#35641837
+# https://stackoverflow.com/a/35641837
+def pcre_detidy(retext):
+    decomment = re.compile(
+        r"""(?#!py/mx decomment Rev:20160225_1800)
+        # Discard whitespace, comments and the escapes of escaped spaces and hashes.
+          ( (?: \s+                  # Either g1of3 $1: Stuff to discard (3 types). Either ws,
+            | \#.*                   # or comments,
+            | \\(?=[\r\n]|$)         # or lone escape at EOL/EOS.
+            )+                       # End one or more from 3 discardables.
+          )                          # End $1: Stuff to discard.
+        | ( [^\[(\s#\\]+             # Or g2of3 $2: Stuff to keep. Either non-[(\s# \\.
+          | \\[^# Q\r\n]             # Or escaped-anything-but: hash, space, Q or EOL.
+          | \(                       # Or an open parentheses, optionally
+            (?:\?\#[^)]*(?:\)|$))?   # starting a (?# Comment group).
+          | \[\^?\]? [^\[\]\\]*      # Or Character class. Allow unescaped ] if first char.
+            (?:\\[^Q][^\[\]\\]*)*    # {normal*} Zero or more non-[], non-escaped-Q.
+            (?:                      # Begin unrolling loop {((special1|2) normal*)*}.
+              (?: \[(?::\^?\w+:\])?  # Either special1: "[", optional [:POSIX:] char class.
+              | \\Q       [^\\]*     # Or special2: \Q..\E literal text. Begin with \Q.
+                (?:\\(?!E)[^\\]*)*   # \Q..\E contents - everything up to \E.
+                (?:\\E|$)            # \Q..\E literal text ends with \E or EOL.
+              )        [^\[\]\\]*    # End special: One of 2 alternatives {(special1|2)}.
+              (?:\\[^Q][^\[\]\\]*)*  # More {normal*} Zero or more non-[], non-escaped-Q.
+            )* (?:\]|\\?$)           # End character class with ']' or EOL (or \\EOL).
+          | \\Q       [^\\]*         # Or \Q..\E literal text start delimiter.
+            (?:\\(?!E)[^\\]*)*       # \Q..\E contents - everything up to \E.
+            (?:\\E|$)                # \Q..\E literal text ends with \E or EOL.
+          )                          # End $2: Stuff to keep.
+        | \\([# ])                   # Or g3of3 $6: Escaped-[hash|space], discard the escape.
+        """, re.VERBOSE | re.MULTILINE
+    )
+    return re.sub(decomment, detidy_cb, retext)
+
+
+def detidy_cb(m):
+    if m.group(2):
+        return m.group(2)
+    if m.group(3):
+        return m.group(3)
+    return ""
+
+
+if __name__ == "__main__":
+    main()

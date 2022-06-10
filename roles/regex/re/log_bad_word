@@ -1,0 +1,5 @@
+# Search for bad words in logs
+
+\b
+#include: log_bad
+s?\b
