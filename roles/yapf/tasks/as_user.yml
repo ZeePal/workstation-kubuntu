@@ -1,0 +1,11 @@
+- name: Create yapf config folder
+  file:
+    state: directory
+    path: "{{ HOME }}/.config/yapf/"
+    mode: u=rwx,go=rx
+
+- name: Yapf style config
+  copy:
+    dest: "{{ HOME }}/.config/yapf/style"
+    mode: u=rw,go=r
+    content: "{{ lookup('file', '{{ role_path }}/files/style') }}"

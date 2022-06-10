@@ -1,5 +1,6 @@
 #!/usr/bin/python3
 import re
+from typing import Any
 
 from ansible.module_utils.basic import AnsibleModule
 
@@ -19,11 +20,9 @@ def install_packages(run, bin_path, packages):
 
 
 def main():
-    module_args = dict(
-        name=dict(type="list", required=True),
-    )
+    module_args = dict(name=dict(type="list", required=True))
 
-    r = {"changed": False}
+    r: dict[str, Any] = {"changed": False}
     module = AnsibleModule(argument_spec=module_args, supports_check_mode=True)
     bin_path = module.get_bin_path("code", True)
 

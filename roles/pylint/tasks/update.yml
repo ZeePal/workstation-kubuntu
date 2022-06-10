@@ -1,0 +1,58 @@
+- name: Check if we recently checked Google Style
+  find:
+    paths: ~/.config/
+    patterns: pylintrc.UPDATE
+    age: -12h
+  register: pylint_config_last_update
+
+- name: Download Google Style config
+  check_mode: false # always run the task, when:
+  when: not pylint_config_last_update.files # If not recently checked for updates
+  get_url:
+    url: https://google.github.io/styleguide/pylintrc
+    dest: ~/.config/pylintrc.UPDATE
+    mode: u=rw,go=r
+    force: true
+
+- name: BUGFIXS for the downloaded Google Style config
+  check_mode: false # always run the task as its the "to update with" file, not live file
+  lineinfile:
+    path: ~/.config/pylintrc.UPDATE
+    regexp: "^{{ item.key }}="
+    line: "{{ item.key }}={{ item.value }}"
+  with_dict:
+    jobs: "1"  # jobs=4 breaks pylint via prospector
+    indent-string: "'    '"  # guide config conflicts with doc (2 spaces google internal, 4 spaces google external)
+
+- name: Add personal touch to downloaded Google Style config
+  check_mode: false # always run the task as its the "to update with" file, not live file
+  lineinfile:
+    path: ~/.config/pylintrc.UPDATE
+    regexp: "^{{ item.key }}="
+    line: "{{ item.key }}={{ item.value }}"
+  with_dict:
+    max-line-length: "120"  # "i have a widescreen"
+
+- name: Get latest Google Style config hash
+  stat:
+    path: ~/.config/pylintrc.UPDATE
+    get_checksum: true
+  register: pylint_config_latest_hash
+
+- name: Get current Google Style config hash
+  stat:
+    path: ~/.config/pylintrc
+    get_checksum: true
+  register: pylint_config_current_hash
+
+- name: Install/Update Google Style config
+  # If the config files are missing (eg not installed)
+  # OR if the latest vs installed config file are different (eg new version available)
+  when: |
+    (not pylint_config_current_hash.stat.exists or not pylint_config_latest_hash.stat.exists)
+    or pylint_config_current_hash.stat.checksum != pylint_config_latest_hash.stat.checksum
+  copy:
+    content: "{{ lookup('file', '{{ HOME }}/.config/pylintrc.UPDATE') }}"
+    dest: ~/.config/pylintrc
+    mode: u=rwx,go=rx
+    remote_src: true
