@@ -8,7 +8,6 @@
       - timonwong.shellcheck
       - samuelcolvin.jinjahtml
       - rust-lang.rust-analyzer
-      - esbenp.prettier-vscode
       - ms-azuretools.vscode-docker
       - redhat.vscode-yaml
       - redhat.ansible
@@ -25,3 +24,5 @@
       - equinusocio.vsc-community-material-theme
       - equinusocio.vsc-material-theme
       - equinusocio.vsc-material-theme-icons
+      - DavidAnson.vscode-markdownlint
+      - tintinweb.graphviz-interactive-preview

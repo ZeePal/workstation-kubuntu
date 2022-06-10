@@ -15,3 +15,5 @@
       alias table="column -t"
 
       function jat() { jq . "${1:--}" |bat -l json; }
+      alias p=parallel
+      alias pxargs='parallel -X --group'
