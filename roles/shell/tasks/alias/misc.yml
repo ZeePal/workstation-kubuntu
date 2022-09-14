@@ -17,3 +17,6 @@
       function jat() { jq . "${1:--}" |bat -l json; }
       alias p=parallel
       alias pxargs='parallel -X --group'
+
+      complete -o nospace -F _fzf_dir_completion mcd
+      function mcd { mkdir -p "$1" && cd "$1"; }

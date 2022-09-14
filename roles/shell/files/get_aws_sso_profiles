@@ -1,25 +1,36 @@
 #!/usr/bin/env python3
+import argparse
 import functools
-import json
-import os
-import threading
 from glob import glob
+import json
 from multiprocessing.pool import ThreadPool
+import os
 from pathlib import Path
+import re
+import threading
 
 import boto3
-import botocore
 
 THREAD_COUNT = int(os.getenv("THREAD_COUNT", "10"))
 DEFAULT_ROLE_PREFERENCES = [
-    "administrator",
-    "admin",
-    "devops",
+    r"^admin(istrator)?s?$",
+    r"^devops$",
+    r"read.?write",
+    r"read.?only",
 ]
 
 
+def get_args():
+    parser = argparse.ArgumentParser(description="Print to STDOUT the AWS SSO Account & Roles pairs")
+    parser.add_argument("-s", "--sso", help="Which SSO? (startUrl contains)")
+    parser.add_argument("-p", "--prefix", help="Role prefix")
+    return parser.parse_args()
+
+
 def main():
-    start_url, token = get_aws_sso_config()
+    args = get_args()
+
+    start_url, token = get_aws_sso_config(pattern=args.sso)
     sso_client = get_aws_sso_client()
     profiles = {}
     worker = functools.partial(get_aws_account_sso_roles, token=token)
@@ -30,25 +41,27 @@ def main():
             profiles[account_name]["roles"].update(roles)
         pool.close()
         pool.join()
-    print_profiles(start_url, profiles, sso_client.meta.region_name)
+    print_profiles(start_url, profiles, sso_client.meta.region_name, prefix=args.prefix)
 
 
-def print_profiles(start_url, profiles, region):
+def print_profiles(start_url, profiles, region, prefix=None):
+    prefix = prefix if prefix else ""
     for account, details in sorted(profiles.items()):
         default_role = get_default_role(details["roles"])
         if default_role:
             print(
-                f"""[profile {account}]
+                f"""[profile {prefix}{account}]
 sso_start_url = {start_url}
 sso_region = {region}
 sso_account_id = {details['id']}
 sso_role_name = {default_role}
 region = {region}
+cli_pager =
 """
             )
         for role in sorted(details["roles"]):
             print(
-                f"""[profile {account}-{role}]
+                f"""[profile {prefix}{account}-{role}]
 sso_start_url = {start_url}
 sso_region = {region}
 sso_account_id = {details['id']}
@@ -79,7 +92,7 @@ def get_aws_account_sso_roles(aws_account, token):
     )
 
 
-def get_aws_sso_config():
+def get_aws_sso_config(pattern=None):
     sso_cache = Path.home() / ".aws/sso/cache"
     for file_path in glob(f"{sso_cache.as_posix()}/*.json"):
         try:
@@ -88,7 +101,8 @@ def get_aws_sso_config():
             start_url = data.get("startUrl")
             token = data.get("accessToken")
             if start_url and token:
-                return start_url, token
+                if (pattern and pattern in start_url.lower()) or (not pattern):
+                    return start_url, token
         except Exception:
             pass
     raise Exception("Unable to locate AWS SSO Token in ~/.aws/sso/cache/*.json:accessToken")
@@ -101,7 +115,7 @@ def get_aws_accounts(client, token):
             yield account
 
 
-# AWS SSO API has its own token so don't do the normal hunting please
+# AWS SSO API has its own token so don't do the normal credential hunting please
 def get_aws_sso_client():
     return boto3.session.Session(
         aws_access_key_id="IGNORE",
@@ -113,14 +127,14 @@ def get_default_role(roles):
     if len(roles) == 0:
         return None
 
-    lowercase_roles = {role.lower(): role for role in roles}
-    for role_preference in DEFAULT_ROLE_PREFERENCES:
-        role = lowercase_roles.get(role_preference, None)
-        if role is not None:
-            return role
+    sorted_roles = sorted(roles)
+    for preference in DEFAULT_ROLE_PREFERENCES:
+        for role in sorted_roles:
+            if re.search(preference, role, re.IGNORECASE):
+                return role
 
     # Default to first role from sorted order
-    return min(roles)
+    return min(sorted_roles)
 
 
 if __name__ == "__main__":

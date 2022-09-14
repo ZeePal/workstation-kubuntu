@@ -1,0 +1,36 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+echo "Finding all containers..."
+readarray -t containers < <(docker ps -qa)
+if [ ${#containers[@]} != 0 ]; then
+  echo "Stopping all containers..."
+  docker stop "${containers[@]}"
+
+  echo "Removing all containers..."
+  docker rm "${containers[@]}"
+fi
+
+echo "Finding all images..."
+readarray -t images < <(docker images -qa)
+if [ ${#images[@]} != 0 ]; then
+  echo "Removing all images..."
+  docker rmi -f "${images[@]}"
+fi
+
+echo "Finding all volumes..."
+readarray -t volumes < <(docker volume ls -q)
+if [ ${#volumes[@]} != 0 ]; then
+  echo "Removing all volumes..."
+  docker volume rm "${volumes[@]}"
+fi
+
+echo "Finding all networks..."
+# Filter out pre-defined networks: bridge, host & none
+readarray -t networks < <(docker network ls --format '{{.ID}} {{.Name}}' | sed -r '/\s+(bridge|host|none)$/d')
+if [ ${#networks[@]} != 0 ]; then
+  echo "Removing all networks..."
+  docker network rm "${networks[@]}"
+fi
+
+echo "Done."

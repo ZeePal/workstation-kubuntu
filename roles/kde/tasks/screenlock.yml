@@ -2,5 +2,8 @@
   kconfig:
     file: ~/.config/kscreenlockerrc
     groups: [Daemon]
-    key: Timeout
-    value: 10 # minutes
+    key: "{{ item.key }}"
+    value: "{{ item.value }}"
+  with_dict:
+    Timeout: "10"  # minutes
+    LockGrace: "0"

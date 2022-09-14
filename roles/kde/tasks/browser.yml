@@ -1,5 +1,12 @@
+- name: Check xdg default browser
+  command: xdg-settings get default-web-browser
+  check_mode: false # always run the task
+  register: xdg_default_web_browser
+  changed_when: false
+
 - name: Set chrome as default browser, part 1
   command: xdg-settings set default-web-browser google-chrome.desktop
+  when: '"google-chrome" not in xdg_default_web_browser.stdout'
 
 - name: Set chrome as default browser, part 2
   kconfig:

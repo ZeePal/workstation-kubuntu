@@ -7,3 +7,6 @@
     - get_aws_sso_profiles
     - force_delete_whole_S3_bucket
     - jgrep
+    - docker_remove_all
+    - find_blankfiles
+    - tf_mass_move

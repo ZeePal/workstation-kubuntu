@@ -12,3 +12,4 @@
     mode: u=rw,go=r
     block: |
       --theme=TwoDark
+      --style header,grid,snip

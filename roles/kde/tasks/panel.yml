@@ -5,7 +5,17 @@
     key: "{{ item.key }}"
     value: "{{ item.value }}"
   with_dict:
-    panelVisibility: 2 # windows can cover
+    panelVisibility: 0 # always visible
+
+- name: Config Bottom panel size
+  kconfig:
+    file: ~/.config/plasmashellrc
+    groups: [PlasmaViews, "Panel 2", "{{ item }}"]
+    key: thickness
+    value: 24
+  with_items:
+    - Defaults
+    - Horizontal1920
 
 - name: Bottom panel date format
   kconfig:

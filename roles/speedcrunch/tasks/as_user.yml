@@ -1,0 +1,17 @@
+- name: Create config folder
+  file:
+    state: directory
+    path: "{{ HOME }}/.config/SpeedCrunch"
+    mode: u=rwx,go=rx
+
+- name: Init config
+  copy:
+    dest: "{{ HOME }}/.config/SpeedCrunch/SpeedCrunch.ini"
+    mode: u=rw,go=r
+    force: false
+    content: |
+      [General]
+      ConfigVersion=1200
+
+      [SpeedCrunch]
+      General\DigitGrouping=1
