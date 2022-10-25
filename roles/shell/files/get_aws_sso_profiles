@@ -13,6 +13,8 @@ import boto3
 
 THREAD_COUNT = int(os.getenv("THREAD_COUNT", "10"))
 DEFAULT_ROLE_PREFERENCES = [
+    r"LimitedAccountAdmin",
+    r"LimitedSandboxAdmin",
     r"^admin(istrator)?s?$",
     r"^devops$",
     r"read.?write",
@@ -47,6 +49,7 @@ def main():
 def print_profiles(start_url, profiles, region, prefix=None):
     prefix = prefix if prefix else ""
     for account, details in sorted(profiles.items()):
+        account = re.sub(r"\s+", "_", account)
         default_role = get_default_role(details["roles"])
         if default_role:
             print(
