@@ -3,6 +3,7 @@ import argparse
 import functools
 from glob import glob
 import json
+import yaml
 from multiprocessing.pool import ThreadPool
 import os
 from pathlib import Path
@@ -10,74 +11,180 @@ import re
 import threading
 
 import boto3
+import botocore
 
 THREAD_COUNT = int(os.getenv("THREAD_COUNT", "10"))
-DEFAULT_ROLE_PREFERENCES = [
-    r"LimitedAccountAdmin",
-    r"LimitedSandboxAdmin",
-    r"^admin(istrator)?s?$",
-    r"^devops$",
-    r"read.?write",
-    r"read.?only",
-]
+RE_UNSAFE_CHARACTERS = re.compile(r"[^A-Za-z0-9_]+")
+
+DEFAULT_CONFIG = r"""
+default_role_alias: a
+account_alias:
+  example_alias: to_aws_account_name
+role_alias:
+  a:
+    - ^(AWS)?Admin(istrator)?(Access)?$
+    - ^(AWS)?OrganizationsFullAccess?$
+  r: ^(AWS)?ReadOnly(Access)?$
+
+template: |
+  [profile {name}] ;{comment}
+  sso_start_url = {sso_start_url}
+  sso_account_id = {sso_account_id}
+  sso_role_name = {sso_role_name}
+  sso_region = {sso_region}
+  region = {sso_region}
+  cli_binary_format = raw-in-base64-out
+  cli_pager =
+"""
 
 
 def get_args():
-    parser = argparse.ArgumentParser(description="Print to STDOUT the AWS SSO Account & Roles pairs")
-    parser.add_argument("-s", "--sso", help="Which SSO? (startUrl contains)")
-    parser.add_argument("-p", "--prefix", help="Role prefix")
+    parser = argparse.ArgumentParser(
+        description="Print to STDOUT the AWS SSO Account & Roles pairs",
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+    )
+    parser.add_argument(
+        "-s",
+        "--sso",
+        help="Which SSO? (startUrl contains)",
+        default="AUTO_DETECT",
+    )
+    parser.add_argument(
+        "-p",
+        "--prefix",
+        help="Profile prefix",
+        default="",
+    )
     return parser.parse_args()
 
 
 def main():
     args = get_args()
 
-    start_url, token = get_aws_sso_config(pattern=args.sso)
+    start_url, token = get_aws_sso_config(args.sso)
     sso_client = get_aws_sso_client()
-    profiles = {}
+
+    config = get_own_config()
+
+    accounts = {}
     worker = functools.partial(get_aws_account_sso_roles, token=token)
     with ThreadPool(THREAD_COUNT) as pool:
         for account_name, account_id, roles in pool.imap_unordered(worker, get_aws_accounts(sso_client, token)):
-            if account_name not in profiles:
-                profiles[account_name] = {"id": account_id, "roles": set()}
-            profiles[account_name]["roles"].update(roles)
+            accounts[account_name] = {
+                "id": account_id,
+                "name": account_name,
+                "roles": roles,
+            }
         pool.close()
         pool.join()
-    print_profiles(start_url, profiles, sso_client.meta.region_name, prefix=args.prefix)
+
+    accounts = dict(sorted(accounts.items()))
+    sso_details = {
+        "url": start_url,
+        "region": sso_client.meta.region_name,
+    }
+    print_profiles(config, sso_details, accounts, profile_prefix=args.prefix)
 
 
-def print_profiles(start_url, profiles, region, prefix=None):
-    prefix = prefix if prefix else ""
-    for account, details in sorted(profiles.items()):
-        account = re.sub(r"\s+", "_", account)
-        default_role = get_default_role(details["roles"])
-        if default_role:
-            print(
-                f"""[profile {prefix}{account}]
-sso_start_url = {start_url}
-sso_region = {region}
-sso_account_id = {details['id']}
-sso_role_name = {default_role}
-region = {region}
-cli_pager =
-"""
+def get_own_config():
+    config_path = Path.home() / ".aws/config.zp"
+    if not config_path.exists():
+        with open(config_path, "w") as file:
+            file.write(DEFAULT_CONFIG)
+
+    with open(config_path, "r") as file:
+        config = yaml.safe_load(file)
+
+    if "role_alias" in config:
+        config["role_alias"] = {
+            alias: [re.compile(i) for i in (value if isinstance(value, list) else [value])]
+            for alias, value in config["role_alias"].items()
+        }
+    return config
+
+
+def print_profiles(config, sso_details, accounts, profile_prefix=""):
+    prefix = f"{profile_prefix}-" if profile_prefix else ""
+
+    print(f"; BEGIN ALIAS {sso_details['url']}")
+    for account_name, account_details in accounts.items():
+        print_role_aliases(config, f"{prefix}{account_name}", sso_details, account_details, "real_account")
+
+        account_alias = config.get("account_alias", {}).get(account_name)
+        if account_alias:
+            account_comment = f"alias_account({account_details['name']})"
+            print_role_aliases(config, f"{prefix}{account_alias}", sso_details, account_details, account_comment)
+            print_roles(config, f"{prefix}{account_alias}", sso_details, account_details, account_comment)
+    print(f"; END ALIAS {sso_details['url']}")
+
+    print(f"; BEGIN REAL {sso_details['url']}")
+    for account_name, account_details in accounts.items():
+        print_roles(config, f"{prefix}{account_name}", sso_details, account_details, "real_account")
+    print(f"; END REAL {sso_details['url']}")
+
+
+def print_roles(config, profile_name, sso_details, account_details, account_comment):
+    for safe_role_name, raw_role_name in account_details["roles"].items():
+        print(
+            config["template"].format(
+                name=f"{profile_name}-{safe_role_name}",
+                comment=f"{account_comment}, real_role",
+                sso_start_url=sso_details["url"],
+                sso_account_id=account_details["id"],
+                sso_role_name=raw_role_name,
+                sso_region=sso_details["region"],
             )
-        for role in sorted(details["roles"]):
+        )
+
+
+def print_role_aliases(config, profile_name, sso_details, account_details, account_comment):
+    for role_alias, patterns in config.get("role_alias", {}).items():
+        raw_role_name = get_first_role_from_patterns(patterns, list(account_details["roles"].values()))
+        if raw_role_name:
             print(
-                f"""[profile {prefix}{account}-{role}]
-sso_start_url = {start_url}
-sso_region = {region}
-sso_account_id = {details['id']}
-sso_role_name = {role}
-region = {region}
-"""
+                config["template"].format(
+                    name=f"{profile_name}-{role_alias}",
+                    comment=f"{account_comment}, alias_role",
+                    sso_start_url=sso_details["url"],
+                    sso_account_id=account_details["id"],
+                    sso_role_name=raw_role_name,
+                    sso_region=sso_details["region"],
+                )
             )
+            if config.get("default_role_alias") == role_alias:
+                print(
+                    config["template"].format(
+                        name=f"{profile_name}",
+                        comment=f"{account_comment}, default_role",
+                        sso_start_url=sso_details["url"],
+                        sso_account_id=account_details["id"],
+                        sso_role_name=raw_role_name,
+                        sso_region=sso_details["region"],
+                    )
+                )
+
+
+def get_first_role_from_patterns(patterns, roles):
+    for pattern in patterns:
+        for role in roles:
+            if pattern.search(role):
+                return role
+    return None
+
+
+def get_aws_accounts(client, token):
+    paginator = client.get_paginator("list_accounts").paginate(accessToken=token)
+    for page in paginator:
+        for account in page["accountList"]:
+            yield {
+                "id": account["accountId"],
+                "name": RE_UNSAFE_CHARACTERS.sub("_", account["accountName"]),
+            }
 
 
 # {
-#     'accountId': 'string',
-#     'accountName': 'string',
-#     'emailAddress': 'string'
+#     'id': 'string',
+#     'name': 'string'
 # }
 def get_aws_account_sso_roles(aws_account, token):
     thread = threading.local()
@@ -86,16 +193,28 @@ def get_aws_account_sso_roles(aws_account, token):
 
     paginator = thread.client.get_paginator("list_account_roles").paginate(
         accessToken=token,
-        accountId=aws_account["accountId"],
+        accountId=aws_account["id"],
     )
     return (
-        aws_account["accountName"],
-        aws_account["accountId"],
-        {role["roleName"] for page in paginator for role in page["roleList"]},
+        aws_account["name"],
+        aws_account["id"],
+        dict(
+            sorted(
+                {
+                    RE_UNSAFE_CHARACTERS.sub("_", role["roleName"]): role["roleName"]
+                    for page in paginator
+                    for role in page["roleList"]
+                }.items()
+            )
+        ),
     )
 
 
-def get_aws_sso_config(pattern=None):
+def get_aws_sso_config(pattern):
+    pattern = pattern.lower()
+    if pattern == "auto_detect":
+        pattern = None
+
     sso_cache = Path.home() / ".aws/sso/cache"
     for file_path in glob(f"{sso_cache.as_posix()}/*.json"):
         try:
@@ -104,40 +223,30 @@ def get_aws_sso_config(pattern=None):
             start_url = data.get("startUrl")
             token = data.get("accessToken")
             if start_url and token:
-                if (pattern and pattern in start_url.lower()) or (not pattern):
+                if pattern:
+                    if pattern in start_url.lower():
+                        return start_url, token
+                else:
                     return start_url, token
         except Exception:
             pass
     raise Exception("Unable to locate AWS SSO Token in ~/.aws/sso/cache/*.json:accessToken")
 
 
-def get_aws_accounts(client, token):
-    paginator = client.get_paginator("list_accounts").paginate(accessToken=token)
-    for page in paginator:
-        for account in page["accountList"]:
-            yield account
-
-
 # AWS SSO API has its own token so don't do the normal credential hunting please
 def get_aws_sso_client():
-    return boto3.session.Session(
-        aws_access_key_id="IGNORE",
-        aws_secret_access_key="IGNORE",
-    ).client("sso")
-
-
-def get_default_role(roles):
-    if len(roles) == 0:
-        return None
-
-    sorted_roles = sorted(roles)
-    for preference in DEFAULT_ROLE_PREFERENCES:
-        for role in sorted_roles:
-            if re.search(preference, role, re.IGNORECASE):
-                return role
-
-    # Default to first role from sorted order
-    return min(sorted_roles)
+    try:
+        return boto3.session.Session(
+            aws_access_key_id="IGNORE",
+            aws_secret_access_key="IGNORE",
+        ).client("sso")
+    except botocore.exceptions.NoRegionError:
+        # its probably ap-southeast-2 anyway
+        return boto3.session.Session(
+            aws_access_key_id="IGNORE",
+            aws_secret_access_key="IGNORE",
+            region_name="ap-southeast-2",
+        ).client("sso")
 
 
 if __name__ == "__main__":

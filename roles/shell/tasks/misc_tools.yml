@@ -5,6 +5,7 @@
     mode: u=rwx,go=rx
   with_items:
     - get_aws_sso_profiles
+    - list_aws_sso_profiles
     - force_delete_whole_S3_bucket
     - jgrep
     - docker_remove_all

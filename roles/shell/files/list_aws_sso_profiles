@@ -1,0 +1,44 @@
+#!/usr/bin/env python3
+import argparse
+import re
+import mmap
+import os
+
+
+RE_TEMPLATE = r"^\[profile\s+{prefix}([^\]-]+{role})\]\s+;.*\breal_account\b"
+
+
+def get_args():
+    parser = argparse.ArgumentParser(
+        description="Print to STDOUT the matching AWS Profiles",
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+    )
+    parser.add_argument(
+        "role",
+        help="Role Regex (Default: all default_role's)",
+        nargs="?",
+        default="",
+    )
+    parser.add_argument(
+        "-p",
+        "--prefix",
+        help="Profile Prefix Regex (Default: no prefix)",
+        default="",
+    )
+    return parser.parse_args()
+
+
+def main():
+    args = get_args()
+
+    prefix = f"{args.prefix}-" if args.prefix else ""
+    role = f"-{args.role}" if args.role else ""
+    pattern = re.compile(RE_TEMPLATE.format(prefix=prefix, role=role).encode(), re.MULTILINE | re.IGNORECASE)
+
+    with open(os.path.expanduser("~/.aws/config"), "r+") as f:
+        data = mmap.mmap(f.fileno(), 0)
+        print(b"\n".join(pattern.findall(data)).decode())
+
+
+if __name__ == "__main__":
+    main()
