@@ -1,0 +1,15 @@
+# Find line(s) that:
+#   - Not Empty
+#   - Contain non-whitespace
+#   - Aren't just comments (#)
+
+# example: rg -f ~/regex/useful_line -r '$1'
+
+#(?m)  # MultiLine Mode
+
+^               # From start of the line
+[^\S\r\n]*      # Ignoring whitespace without crossing newlines
+([^\s#][^#]*?)  # Capture the uncommented string with no leading/tailing whitespace (non-greedy)
+[^\S\r\n]*      # Ignoring whitespace without crossing newlines
+(?:\#.*)?       # Ignoring comments
+$               # Till end of the line
