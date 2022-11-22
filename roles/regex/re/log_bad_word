@@ -2,4 +2,5 @@
 
 \b
 #include: log_bad
-s?\b
+s?  # allow basic plural words
+\b

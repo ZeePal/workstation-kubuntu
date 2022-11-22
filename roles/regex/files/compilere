@@ -5,11 +5,14 @@ import re
 
 # "Compile" verbose regex's (~/regex/.*) into non-verbose regex's (~/regex/*)
 REGEX_FOLDER = Path.home() / "regex"
+RE_INCLUDE = re.compile(r"^\s*#\s*include:\s*(.+)$")
 
 
 def main():
-    for filename in glob(f"{REGEX_FOLDER}/.*"):
-        print(render(REGEX_FOLDER / filename))
+    for raw_path in glob(f"{REGEX_FOLDER}/.*"):
+        path = Path(raw_path)
+        with open(path.parent / path.name.lstrip("."), "w") as output:
+            output.write(render(path))
 
 
 def render(path: Path) -> str:
@@ -19,11 +22,11 @@ def render(path: Path) -> str:
 
 def _render(path: Path) -> list[str]:
     parsed = []
-    with open(path, encoding="utf-8") as file:
+    with open(path, "r") as file:
         for line in file:
-            if line.startswith("#include: "):
-                include_path = line.rstrip().split(" ", 1)[-1]
-                parsed.extend(_render(path.parent / f".{include_path}"))
+            include = RE_INCLUDE.search(line)
+            if include:
+                parsed.extend(_render(path.parent / f".{include.group(1)}"))
                 continue
             parsed.append(line)
 
@@ -61,7 +64,8 @@ def pcre_detidy(retext):
             (?:\\E|$)                # \Q..\E literal text ends with \E or EOL.
           )                          # End $2: Stuff to keep.
         | \\([# ])                   # Or g3of3 $6: Escaped-[hash|space], discard the escape.
-        """, re.VERBOSE | re.MULTILINE
+        """,
+        re.VERBOSE | re.MULTILINE,
     )
     return re.sub(decomment, detidy_cb, retext)
 

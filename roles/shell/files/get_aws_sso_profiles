@@ -3,7 +3,6 @@ import argparse
 import functools
 from glob import glob
 import json
-import yaml
 from multiprocessing.pool import ThreadPool
 import os
 from pathlib import Path
@@ -12,6 +11,7 @@ import threading
 
 import boto3
 import botocore
+import yaml
 
 THREAD_COUNT = int(os.getenv("THREAD_COUNT", "10"))
 RE_UNSAFE_CHARACTERS = re.compile(r"[^A-Za-z0-9_]+")
@@ -95,6 +95,9 @@ def get_own_config():
     with open(config_path, "r") as file:
         config = yaml.safe_load(file)
 
+    if "account_alias" in config:
+        config["account_alias"] = {account.lower(): alias for alias, account in config["account_alias"].items()}
+
     if "role_alias" in config:
         config["role_alias"] = {
             alias: [re.compile(i) for i in (value if isinstance(value, list) else [value])]
@@ -110,7 +113,7 @@ def print_profiles(config, sso_details, accounts, profile_prefix=""):
     for account_name, account_details in accounts.items():
         print_role_aliases(config, f"{prefix}{account_name}", sso_details, account_details, "real_account")
 
-        account_alias = config.get("account_alias", {}).get(account_name)
+        account_alias = config.get("account_alias", {}).get(account_name.lower())
         if account_alias:
             account_comment = f"alias_account({account_details['name']})"
             print_role_aliases(config, f"{prefix}{account_alias}", sso_details, account_details, account_comment)

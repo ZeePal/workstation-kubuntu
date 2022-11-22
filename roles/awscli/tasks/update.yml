@@ -39,7 +39,7 @@
     (not awscli_current_archive_hash.stat.exists or not awscli_latest_archive_hash.stat.exists)
     or awscli_current_archive_hash.stat.checksum != awscli_latest_archive_hash.stat.checksum
   block:
-    - name: Download AWS cli archive
+    - name: Download latest AWS cli archive
       get_url:
         url: https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip
         dest: /opt/aws/cli/awscli.zip

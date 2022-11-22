@@ -13,7 +13,7 @@
 - name: Copy verbose regexes
   copy:
     dest: "{{ HOME }}/regex/.{{ item }}"
-    mode: u=rwx,go=rx
+    mode: u=rw,go=r
     content: "{{ lookup('file', 're/{{ item }}') }}"
   with_items: "{{ lookup('fileglob', 're/*', wantlist=True) | map('basename') | list }}"
   register: regexes_updated

@@ -39,6 +39,8 @@
 
       pylint:
         run: true
+        disable:
+          - unspecified-encoding  # too noisey for day to day
 
       pyroma:
         run: true
