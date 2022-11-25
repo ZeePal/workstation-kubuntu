@@ -47,8 +47,12 @@
 - name: No onscreen keyboard to login
   lineinfile:
     name: /etc/sddm.conf
-    line: InputMethod=
+    create: true
+    owner: root
+    group: root
+    mode: u=rw,go=r
     state: present
+    line: InputMethod=
 
 - import_tasks: init.yml
   when: kde_init_setup.changed

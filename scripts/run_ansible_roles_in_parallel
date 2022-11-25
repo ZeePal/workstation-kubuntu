@@ -1,0 +1,339 @@
+#!/usr/bin/env -S python3 -u
+import argparse
+from dataclasses import dataclass
+from dataclasses import field
+from datetime import datetime
+import os
+from pathlib import Path
+import re
+from signal import SIGCHLD
+from signal import signal
+from subprocess import PIPE  # nosec B404
+from subprocess import Popen  # nosec B404
+import sys
+from threading import Event
+from threading import Thread
+from time import time
+
+REPO_DIR = Path(os.path.dirname(os.path.realpath(__file__))).parent
+ROLES_DIR = REPO_DIR / "roles"
+
+RE_USEFUL_LINES = re.compile(
+    r"""
+    ^               # From start of the line
+    [^\S\r\n]*      # Ignoring whitespace without crossing newlines
+    ([^\s#][^#]*?)  # Capture the uncommented string with no leading/tailing whitespace (non-greedy)
+    [^\S\r\n]*      # Ignoring whitespace without crossing newlines
+    (?:\#.*)?       # Ignoring comments
+    $               # Till end of the line
+    """,
+    re.MULTILINE | re.VERBOSE,
+)
+
+ANSIBLE_ENV = os.environ.copy()
+ANSIBLE_ENV["ANSIBLE_PYTHON_INTERPRETER"] = "/usr/bin/python3"
+ANSIBLE_ENV[
+    "ANSIBLE_CALLBACK_PLUGINS"
+] = f"~/.ansible/plugins/callback:/usr/share/ansible/plugins/callback:{REPO_DIR}/callback_plugins"
+ANSIBLE_ENV["ANSIBLE_LIBRARY"] = f"~/.ansible/plugins/modules:/usr/share/ansible/plugins/modules:{REPO_DIR}/library"
+ANSIBLE_ENV["ANSIBLE_PIPELINING"] = "true"
+
+ANSIBLE_ENV["ANSIBLE_LOAD_CALLBACK_PLUGINS"] = "true"
+ANSIBLE_ENV["ANSIBLE_STDOUT_CALLBACK"] = "yaml_quiet"
+ANSIBLE_ENV["ANSIBLE_FORCE_COLOR"] = "true"
+
+ANSIBLE_ENV["ANSIBLE_CHECK_MODE_MARKERS"] = "true"
+ANSIBLE_ENV["ANSIBLE_SHOW_TASK_PATH_ON_FAILURE"] = "true"
+ANSIBLE_ENV["ANSIBLE_DISPLAY_OK_HOSTS"] = "false"
+ANSIBLE_ENV["ANSIBLE_DISPLAY_SKIPPED_HOSTS"] = "false"
+
+
+# Catch all SIGCHLD's to start new ansible roles faster
+SIGCHLD_RECEIVED = Event()
+signal(SIGCHLD, lambda x, y: SIGCHLD_RECEIVED.set())
+
+
+def main():
+    args = get_args()
+
+    # Tweak the ansible config/env
+    if args.verbose != 0 or args.debug:
+        ANSIBLE_ENV.pop("ANSIBLE_DISPLAY_OK_HOSTS")
+        ANSIBLE_ENV.pop("ANSIBLE_DISPLAY_SKIPPED_HOSTS")
+    if args.debug:
+        ANSIBLE_ENV["ANSIBLE_STDOUT_CALLBACK"] = "debug"
+        args.verbose = max(3, args.verbose)
+    if args.stdout:
+        ANSIBLE_ENV["ANSIBLE_STDOUT_CALLBACK"] = args.stdout
+
+    role_tree = build_role_dependency_tree()
+    if args.role:
+        # Take the set of requested roles & remove excluded roles
+        roles_to_run = set(args.role) - set(args.exclude)
+    else:
+        # Take the set of all found roles & remove excluded roles
+        roles_to_run = role_tree.keys() - set(args.exclude)
+
+    run_roles(role_tree, roles_to_run, args)
+
+
+def get_args():
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--user",
+        help="What is the username of the primary workstation user?",
+        required=True,
+        type=str,
+    )
+    parser.add_argument(
+        "--uid",
+        help="What is the UID of the primary workstation user?",
+        required=True,
+        type=str,
+    )
+    parser.add_argument(
+        "--home",
+        help="What is the home folder of the primary workstation user?",
+        required=True,
+        type=str,
+    )
+    parser.add_argument(
+        "-c",
+        "-C",
+        "--check",
+        help="Check only (Ansible Passthrough)",
+        action="store_true",
+    )
+    parser.add_argument(
+        "-d",
+        "-D",
+        "--diff",
+        help="Show diffs (Ansible Passthrough)",
+        action="store_true",
+    )
+    parser.add_argument(
+        "-i",
+        "--ignore-errors",
+        help="Continue executing if role errors occur",
+        action="store_true",
+    )
+    parser.add_argument(
+        "--debug",
+        help="Enable Debug Mode",
+        action="store_true",
+    )
+    parser.add_argument(
+        "--stdout",
+        help="Change Ansible to specified STDOUT callback",
+        type=str,
+    )
+    parser.add_argument(
+        "-v",
+        "--verbose",
+        action="count",
+        default=0,
+    )
+    parser.add_argument(
+        "-e",
+        "--exclude",
+        help="Roles to exclude",
+        action="append",
+        default=[],
+        type=str,
+    )
+    parser.add_argument(
+        "role",
+        help="Roles to execute (Default is all)",
+        nargs="*",
+        default=[],
+        type=str,
+    )
+    return parser.parse_args()
+
+
+@dataclass
+class Role:
+    name: str
+    depends_on: set[str] = field(default_factory=set)
+    depended_by: set[str] = field(default_factory=set)
+
+
+class RoleError(Exception):
+    pass
+
+
+def build_role_dependency_tree():
+    roles = {}
+    # Find each role dir & load their inter-dependencys
+    for role_dir in ROLES_DIR.iterdir():
+        if "." in role_dir.name:
+            continue
+        if not role_dir.is_dir():
+            continue
+
+        role = Role(role_dir.name)
+        roles[role.name] = role
+        depends_on = role_dir / "depends_on"
+        if depends_on.exists():
+            with open(depends_on, "r") as file:
+                role.depends_on.update(RE_USEFUL_LINES.findall(file.read()))
+
+    # Backfill depended_by from depends_on
+    for role in roles.values():
+        for parent_role in role.depends_on:
+            try:
+                roles[parent_role].depended_by.add(role.name)
+            except KeyError as e:
+                raise ValueError(f"Role '{role.name}' depends on non-existent role '{parent_role}'") from e
+    return roles
+
+
+# Run all requested roles in dependency order
+def run_roles(role_tree, roles_to_run, args):
+    errors = []
+    roles_running = {}
+    while roles_running or roles_to_run:
+        waiting_on = ", ".join(sorted([proc["role"] for proc in roles_running.values()]))
+        if not errors or args.ignore_errors:
+            if not start_ready_roles(roles_running, role_tree, roles_to_run, args):
+                print(f"Waiting on: {waiting_on}")
+        elif roles_running:
+            print("\n\n##### Errors Detected, not starting any more roles ######")
+            print("\n".join(errors))
+            print(f"\nWaiting on: {waiting_on}")
+            print("\n\n")
+        else:
+            raise RoleError(", ".join(sorted(errors)))
+
+        SIGCHLD_RECEIVED.wait(timeout=10)
+        check_all_running_roles(role_tree, roles_running, errors, args)
+
+
+# Start requested roles that are not waiting on other roles
+def start_ready_roles(roles_running, role_tree, roles_to_run, args):
+    skip_excluded_roles(roles_running, role_tree, roles_to_run)
+    started_a_role = False
+    for role in list(roles_to_run):
+        if role_tree[role].depends_on:
+            continue  # still waiting for other roles to finish
+
+        proc = spawn_ansible_role(role, args)
+        roles_running[proc.pid] = {"role": role, "proc": proc, "start": time()}
+        roles_to_run.remove(role)
+        started_a_role = True
+
+    if not roles_running:
+        raise RoleError(f"Circular dependency detected: {roles_to_run}")
+    return started_a_role
+
+
+# Walk role_tree and mark ready roles as finished if they have been excluded from running
+# This is to keep the indirect relationships between roles (eg: rust > cargo > delta)
+def skip_excluded_roles(roles_running, role_tree, roles_to_run):
+    not_excluded = roles_to_run | {i["role"] for i in roles_running.values()}
+
+    change_made = True
+    while change_made:
+        change_made = False
+        for role in list(role_tree.values()):
+            if role.name in not_excluded:
+                continue
+            if role.depends_on:
+                continue
+
+            change_made = True
+            mark_role_as_finished(role_tree, role.name)
+            del role_tree[role.name]
+
+
+def check_all_running_roles(role_tree, roles_running, errors, args):
+    SIGCHLD_RECEIVED.clear()
+    for pid in list(roles_running.keys()):
+        exit_code = roles_running[pid]["proc"].poll()
+        if exit_code is not None:
+            process_finished_role(role_tree, roles_running, errors, pid, exit_code, args)
+
+
+# Check finished role for errors & mark it as finished
+def process_finished_role(role_tree, roles_running, errors, pid, exit_code, args):
+    proc = roles_running.pop(pid)
+    role = proc["role"]
+    if args.verbose > 0:
+        print(f"{role} - Finished ({time()-proc['start']:.2f}s)")
+
+    if exit_code != 0:
+        error = f"ERROR: {role} - Exit Code: {exit_code}"
+        print(error, file=sys.stderr)
+        errors.append(error)
+
+    mark_role_as_finished(role_tree, role)
+
+
+def mark_role_as_finished(role_tree, parent_role):
+    for role in role_tree.values():
+        role.depends_on.discard(parent_role)
+
+
+# Start Ansible Ad-Hoc with 1 specific role only
+def spawn_ansible_role(role, args):
+    cmd = ["ansible", "localhost"]
+
+    if args.check:
+        cmd.append("--check")
+    if args.diff:
+        cmd.append("--diff")
+    if args.verbose > 0:
+        cmd.append(f"-{'v'*args.verbose}")
+
+    # Execute the requested role locally
+    cmd.extend(
+        [
+            "--connection",
+            "local",
+            "--module-name",
+            "include_role",
+            "--args",
+            f"name={role}",
+        ]
+    )
+
+    # Add on ansible extra_vars
+    cmd.extend(
+        [
+            "-e",
+            f"USER={args.user}",
+            "-e",
+            f"UID={args.uid}",
+            "-e",
+            f"HOME={args.home}",
+        ]
+    )
+
+    if args.verbose > 0:
+        print(f"{role} - Starting: {cmd}")
+    proc = Popen(  # pylint: disable=consider-using-with # nosec B603
+        cmd,
+        cwd=REPO_DIR,
+        env=ANSIBLE_ENV,
+        stdout=PIPE,
+        stderr=PIPE,
+    )
+    Thread(target=prefix_pipe_lines, args=[role, proc.stdout, sys.stdout], daemon=True).start()
+    Thread(target=prefix_pipe_lines, args=[role, proc.stderr, sys.stderr], daemon=True).start()
+    return proc
+
+
+# Read subprocess PIPE's line by line and prefix each line with the role name & timestamp (Blocking, call from daemon threads)
+def prefix_pipe_lines(role, pipe, file):
+    with pipe:
+        while line := pipe.readline():
+            print(
+                f"{role} - {datetime.now().strftime('%H:%M:%S')}: {line.decode()}",
+                file=file,
+                flush=True,
+                end="",
+            )
+
+
+if __name__ == "__main__":
+    main()

@@ -84,3 +84,5 @@
       - speedcrunch
       - kio-gdrive
       - aptitude
+      - cloud-image-utils
+      - cmake

@@ -1,0 +1,25 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Check if we have already started the test in this image (eg troubleshooting/reboot)
+if [[ -e ~/git ]]; then
+  echo "Not a fresh build, exiting..."
+  exit
+fi
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" >/dev/null 2>&1 && pwd)"
+
+# Sudo with the test password to keep automated without changing /etc/sudoers
+echo "Pre-sudo'ing..."
+echo test | sudo -S echo "sudo'd."
+
+echo "Starting ./tests/bootstrap_install"
+set +eo pipefail
+/usr/bin/time --verbose --output /mnt/output/bootstrap_install.timings \
+  "$SCRIPT_DIR/bootstrap_install" 2>&1 | tee /mnt/output/bootstrap_install.log
+
+RC=("${PIPESTATUS[@]}")
+if [[ ${RC[0]} != 0 ]] || [[ ${RC[1]} != 0 ]]; then
+  echo "ERROR: ./tests/bootstrap_install failed (${RC[*]})" | tee /mnt/output/bootstrap_install.err >&2
+  exec bash # Start interactive terminal for trouleshooting
+fi

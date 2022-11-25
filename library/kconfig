@@ -58,8 +58,8 @@ def main():
                 r["rc"], r["stdout"], r["stderr"] = write(module.run_command, kwrite, args, module.params["value"])
             else:
                 r["diff"] = {
-                    "before": current,
-                    "after": module.params["value"],
+                    "before": f"{current}\n",  # end with newline to keep ansible diff display happier
+                    "after": f"{module.params['value']}\n",
                 }
 
     module.exit_json(**r)

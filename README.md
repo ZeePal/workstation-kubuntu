@@ -7,12 +7,12 @@ Installation is intended to run on a brand new installation of Ubuntu 22.04.
 ## Lazy Installation
 **DISCLAIMER:** I do not recommend using this method, its INSECURE!
 ```bash
-wget -O - https://raw.githubusercontent.com/ZeePal/workstation-kubuntu/master/bootstrap_install | bash
+wget -O - https://raw.githubusercontent.com/ZeePal/workstation-kubuntu/master/scripts/bootstrap_install | bash
 ```
 
 ## Safer Installation
 ```bash
-wget -O /tmp/bootstrap https://raw.githubusercontent.com/ZeePal/workstation-kubuntu/master/bootstrap_install
+wget -O /tmp/bootstrap https://raw.githubusercontent.com/ZeePal/workstation-kubuntu/scripts/bootstrap_install
 less /tmp/bootstrap
 # Use eyeballs to review :D
 chmod +x /tmp/bootstrap
@@ -25,4 +25,3 @@ chmod +x /tmp/bootstrap
 - KDE Wallet
 - Chrome
 - SSH Key
-

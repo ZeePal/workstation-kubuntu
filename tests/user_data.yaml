@@ -1,0 +1,84 @@
+#cloud-config
+autoinstall:
+  version: 1
+  identity:
+    realname: ZeePal Test
+    hostname: test-workstation-kubuntu
+    username: zptest
+    password: $6$KC6CCjB9ayl7o4Ws$15BCDRTQb5M53Qv3j9B69INP9S2fnLwjysNIE2OndZEQR.PoxeaGxuAQl9IC4Q3mATUhwdoSb7frZ4034tdd0/ # "test"
+  timezone: Australia/Melbourne
+  late-commands:
+    # Install Kubuntu Desktop & VirtualBox Guest Additions
+    - curtin in-target --target=/target -- apt-get install -y kubuntu-desktop virtualbox-guest-utils
+
+  # Reboot to start first boot to execute below user-data then shutdown
+  shutdown: reboot
+
+  user-data:
+    bootcmd:
+      # Use whole disk
+      - lvresize --resizefs -l +100%FREE /dev/ubuntu-vg/ubuntu-lv
+      # Create sddm config folder ready for write_files
+      - mkdir -p /etc/sddm.conf.d/
+
+    write_files:
+      - path: /root/virtualbox_tester # Start terminal running test
+        owner: root:root
+        permissions: "0755"
+        content: |
+          #!/usr/bin/env bash
+
+          read -r -d '' INNER_SCRIPT <<!
+          while true; do
+            if [ -f /mnt/workstation-kubuntu/tests/vm_start ]; then
+              exec /mnt/workstation-kubuntu/tests/vm_start
+            fi
+            echo "Waiting for shared folder to be attached..."
+            sleep 0.05
+          done
+          !
+
+          exec /usr/bin/konsole --fullscreen -e "bash -c '$INNER_SCRIPT'"
+      - path: /root/virtualbox_tester.desktop # Auto start script
+        owner: root:root
+        permissions: "0644"
+        content: |
+          [Desktop Entry]
+          Exec=/home/zptest/virtualbox_tester
+          Icon=
+          Name=virtualbox_tester
+          Path=
+          Terminal=False
+          Type=Application
+      - path: /etc/sddm.conf.d/kde_settings.conf # Auto login
+        owner: root:root
+        permissions: "0644"
+        content: |
+          [Autologin]
+          Relogin=false
+          Session=plasma
+          User=zptest
+
+          [General]
+          HaltCommand=
+          RebootCommand=
+
+          [Theme]
+          Current=
+
+          [Users]
+          MaximumUid=60000
+          MinimumUid=1000
+
+    runcmd:
+      # Allow new user to use shared folders
+      - adduser zptest vboxsf
+
+      # Move files created in write_files directive to the new user
+      - mkdir -p /home/zptest/.config/autostart/
+      - mv /root/virtualbox_tester /home/zptest/virtualbox_tester
+      - mv /root/virtualbox_tester.desktop /home/zptest/.config/autostart/virtualbox_tester.desktop
+      - chown zptest:zptest /home/zptest/virtualbox_tester /home/zptest/.config/autostart/virtualbox_tester.desktop /home/zptest/.config /home/zptest/.config/autostart
+
+      # Shutdown after build for snapshotting
+      - shutdown -h now

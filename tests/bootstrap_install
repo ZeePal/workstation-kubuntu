@@ -1,0 +1,26 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+echo "Simulating real ./scripts/bootstrap_install..."
+GIT_FOLDER=~/git/ZeePal
+REPO=/mnt/workstation-kubuntu
+REPO_NAME="$(basename -s .git "$REPO")"
+
+echo "Installing install dependencys..."
+sudo apt update
+sudo apt install -y software-properties-common
+sudo add-apt-repository --yes --update ppa:ansible/ansible
+
+sudo apt install -y ansible git python3-apt curl build-essential
+
+echo "Cloning Dev Git Repo..."
+mkdir -p "$GIT_FOLDER"
+cd "$GIT_FOLDER"
+rsync -a \
+  --filter="dir-merge,- .gitignore" \
+  "$REPO/" "$GIT_FOLDER/$REPO_NAME/"
+
+echo "Starting full install..."
+cd "$REPO_NAME"
+/usr/bin/time --verbose --output bootstrap_install.timings ./install 2>&1 | tee bootstrap_install.log
+reboot
