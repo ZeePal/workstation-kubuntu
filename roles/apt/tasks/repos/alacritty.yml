@@ -1,0 +1,6 @@
+- name: Install the alacritty ppa repository
+  apt_repository:
+    state: present
+    repo: ppa:aslatter/ppa
+    update_cache: no
+  notify: Refresh apt

@@ -149,7 +149,9 @@
       function _pre_starship_prompt_commands {
         local STATUS=$?  # Passthrough the last exit code for starship
         history -a
-        __vte_prompt_command
+        if [ $TILIX_ID ] || [ $VTE_VERSION ]; then
+          __vte_prompt_command
+        fi
         return $STATUS
       }
       PROMPT_COMMAND="_pre_starship_prompt_commands;starship_precmd"

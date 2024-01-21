@@ -7,7 +7,7 @@
     group: root
     mode: u=rwx,go=rx
 
-- name: Set Tilix as default Terminal, part 1
-  alternatives:
-    name: x-terminal-emulator
-    path: /usr/bin/tilix.wrapper
+# - name: Set Tilix as default Terminal, part 1
+#   alternatives:
+#     name: x-terminal-emulator
+#     path: /usr/bin/tilix.wrapper

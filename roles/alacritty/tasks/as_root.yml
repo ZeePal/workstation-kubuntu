@@ -1,0 +1,4 @@
+- name: Set Alacritty as default Terminal, part 1
+  alternatives:
+    name: x-terminal-emulator
+    path: /usr/bin/alacritty

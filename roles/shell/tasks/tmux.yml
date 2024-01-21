@@ -1,0 +1,5 @@
+- name: Copy in tmux config
+  copy:
+    src: "{{ role_path }}/files/tmux.conf"
+    dest: "{{ HOME }}/.tmux.conf"
+    mode: u=rw,go=r

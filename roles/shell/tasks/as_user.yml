@@ -9,3 +9,4 @@
 - import_tasks: gclone.yml
 - import_tasks: docker_shell.yml
 - import_tasks: misc_tools.yml
+- import_tasks: tmux.yml

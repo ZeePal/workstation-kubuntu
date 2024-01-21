@@ -36,16 +36,16 @@
     scrollback-lines: 81920
     use-theme-colors: "false"
 
-- name: Set Tilix as default Terminal, part 2
-  become: true
-  become_user: "{{ USER }}"
-  kconfig:
-    groups: [General]
-    key: "{{ item.key }}"
-    value: "{{ item.value }}"
-  with_dict:
-    TerminalApplication: tilix
-    TerminalService: com.gexperts.Tilix.desktop
+# - name: Set Tilix as default Terminal, part 2
+#   become: true
+#   become_user: "{{ USER }}"
+#   kconfig:
+#     groups: [General]
+#     key: "{{ item.key }}"
+#     value: "{{ item.value }}"
+#   with_dict:
+#     TerminalApplication: tilix
+#     TerminalService: com.gexperts.Tilix.desktop
 
 - name: Get CtrlAltR shortcut config
   kconfig:
@@ -61,13 +61,13 @@
     key: repeat_action
     value: "none,{{ kde_ctrl_alt_r.value.split(',', 1)[1] }}"
 
-- name: Update CtrlAltT to Tilix
-  replace:
-    path: "{{ HOME }}/.config/khotkeysrc"
-    regexp: "{{ item.key }}"
-    replace: "{{ item.value }}"
-  with_dict:
-    Name=Launch Konsole: Name=Launch Tilix
-    CommandURL=org\.kde\.konsole\.desktop: CommandURL=com.gexperts.Tilix.desktop
-    Name=Run Konsole: Name=Run Tilix
-    CommandURL=konsole: CommandURL=tilix
+# - name: Update CtrlAltT to Tilix
+#   replace:
+#     path: "{{ HOME }}/.config/khotkeysrc"
+#     regexp: "{{ item.key }}"
+#     replace: "{{ item.value }}"
+#   with_dict:
+#     Name=Launch Konsole: Name=Launch Tilix
+#     CommandURL=org\.kde\.konsole\.desktop: CommandURL=com.gexperts.Tilix.desktop
+#     Name=Run Konsole: Name=Run Tilix
+#     CommandURL=konsole: CommandURL=tilix

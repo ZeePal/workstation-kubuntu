@@ -3,7 +3,7 @@ kde:
     task_bar:
       - preferred://filemanager
       - preferred://browser
-      - applications:com.gexperts.Tilix.desktop
+      - applications:com.alacritty.Alacritty.desktop
       - applications:code.desktop
     start_menu:
       - applications:discord_discord.desktop
