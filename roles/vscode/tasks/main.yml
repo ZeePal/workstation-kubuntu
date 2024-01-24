@@ -13,7 +13,6 @@
       - redhat.ansible
       - golang.Go
       - streetsidesoftware.code-spell-checker
-      - TabNine.tabnine-vscode
       - oderwat.indent-rainbow
       - KevinRose.vsc-python-indent
       - Gruntfuggly.todo-tree
