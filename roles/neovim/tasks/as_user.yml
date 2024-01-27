@@ -1,0 +1,17 @@
+- name: Create NeoVim config folder
+  file:
+    state: directory
+    path: "{{ HOME }}/.config/nvim/"
+    mode: u=wrx,go=rx
+
+- name: Copy in NeoVim config
+  copy:
+    src: "{{ role_path }}/files/config/"
+    dest: "{{ HOME }}/.config/nvim/"
+    mode: u=rw,go=r
+
+- name: Bootstrap NeoVim Packer
+  command:
+    cmd: |
+      git clone --depth 1 https://github.com/wbthomason/packer.nvim ~/.local/share/nvim/site/pack/packer/start/packer.nvim
+    creates: "{{ HOME }}/.local/share/nvim/site/pack/packer/start/packer.nvim"

@@ -1,0 +1,29 @@
+- name: Install the NodeSource apt key
+  apt_key:
+    state: present
+    keyring: /etc/apt/keyrings/nodesource.gpg
+    id: 6F71F525282841EEDAF851B42F59B5F99B1BE0B4
+    url: https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key
+
+- name: Install restrictions for NodeSource apt repo
+  copy:
+    dest: /etc/apt/preferences.d/50-nodesource
+    owner: root
+    group: root
+    mode: u=rw,go=r
+    content: |
+      Package: nsolid
+      Pin: origin deb.nodesource.com
+      Pin-Priority: 600
+
+      Package: nodejs
+      Pin: origin deb.nodesource.com
+      Pin-Priority: 600
+
+- name: Install the NodeSource apt repository
+  apt_repository:
+    state: present
+    repo: deb [arch=amd64 signed-by=/etc/apt/keyrings/nodesource.gpg] https://deb.nodesource.com/node_21.x nodistro main
+    filename: nodesource
+    update_cache: false
+  notify: Refresh apt

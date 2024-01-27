@@ -1,0 +1,44 @@
+- name: Create NeoVim opt folders
+  file:
+    state: directory
+    path: /opt/neovim
+    owner: root
+    group: root
+    mode: u=rwx,go=rx
+
+- name: Get latest version number of NeoVim
+  uri:
+    url: https://api.github.com/repos/neovim/neovim/releases/latest
+    return_content: true
+  check_mode: false # always run the task
+  register: github_latest_release
+
+- name: Download latest version of NeoVim
+  loop: "{{ github_latest_release.json.assets }}"
+  when: "item.name == 'nvim.appimage'"
+  get_url:
+    url: "{{ item.browser_download_url }}"
+    dest: "/opt/neovim/nvim_{{ github_latest_release.json.tag_name }}.appimage"
+    mode: u=rwx,go=rx
+
+- name: Install NeoVim
+  file:
+    src: "/opt/neovim/nvim_{{ github_latest_release.json.tag_name }}.appimage"
+    dest: /usr/local/bin/nvim
+    owner: root
+    group: root
+    state: link
+
+- name: Default to NeoVim
+  alternatives:
+    name: "{{ item }}"
+    path: /usr/local/bin/nvim
+  with_items:
+    - editor
+    - ex
+    - rview
+    - rvim
+    - vi
+    - view
+    - vim
+    - vimdiff
