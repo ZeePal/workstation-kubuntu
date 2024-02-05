@@ -30,3 +30,10 @@ vim.keymap.set("n", "Q", "<nop>")
 
 -- Format me :D
 vim.keymap.set("n", "<leader>f", vim.lsp.buf.format)
+
+-- Manually format selected markdown table
+vim.keymap.set("v", "<leader>t", ":'<,'>EasyAlign *|<CR>")
+
+-- Duplicate current line
+vim.keymap.set({"n", "i"}, "<C-S-d>", "<Cmd>:t.<CR>")
+

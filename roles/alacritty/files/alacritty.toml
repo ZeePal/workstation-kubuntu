@@ -10,6 +10,11 @@ save_to_clipboard = true
 [shell]
 program = "tmux"
 
+[keyboard]
+bindings = [
+  {mods="Control|Shift", key="D", chars="\u001b[68;5u"},  # \x1b[68;5u
+]
+
 # Material Theme
 # Default colors
 [colors.primary]

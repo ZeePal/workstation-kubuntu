@@ -78,4 +78,6 @@ return require('packer').startup(function(use)
         "asiryk/auto-hlsearch.nvim",
         tag = "1.1.0"
     }
+
+    use 'junegunn/vim-easy-align'
 end)
