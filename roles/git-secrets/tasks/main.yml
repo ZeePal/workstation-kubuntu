@@ -2,8 +2,8 @@
   get_url:
     url: https://raw.githubusercontent.com/awslabs/git-secrets/master/git-secrets
     dest: /usr/local/bin/git-secrets
-    # no updates in ~4years
-    checksum: sha512:5ad747f1063e4b91a5960b185435beb62cd662967bb881a85a6327b5e3e8d9037ce451c60e28c4b43f3da55980fc35578cb031cf76b93dad0dd8b0d59c495db8
+    # no updates in ~1years
+    checksum: sha512:3c677f0f31bbe4f4b573be89fb5e05c41edee5cb273c3f79ff7151e631d20968b8f3b11291e34a208488c8391bf398979aeef5021207646cef211fef13bebab0
     mode: u=rwx,go=rx
 
 - import_tasks: as_user.yml

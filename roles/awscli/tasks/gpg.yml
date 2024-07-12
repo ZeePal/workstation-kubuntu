@@ -20,7 +20,7 @@
   register: awscli_gpg_key_hash
 
 - name: Verify AWS cli gpg key hash
-  when: awscli_gpg_key_hash.stat.checksum != '2f85eb35b7b63eb435b4437d019b0db9a742d9d9c7a13f241a64b650c51e2e1b3a88460ece4a4abeeb123cf2df96274a0045e93559c973d5874ad884feef9951'
+  when: awscli_gpg_key_hash.stat.checksum != 'd1db2601687fca3c9548af229a7abd5d8fa0144378deb0d9f22e53ba3b54957df351aa2e31bceebdaea69b847ebfb4a1e769c59e329ee99d885653d0b7eb8b35'
   fail:
     msg: AWS cli gpg key hash doesnt match the expected hash
 
