@@ -16,7 +16,7 @@ sudo apt install -y ansible git python3-apt curl build-essential
 echo "Cloning Dev Git Repo..."
 mkdir -p "$GIT_FOLDER"
 cd "$GIT_FOLDER"
-rsync -a \
+rsync -a --delete \
   --filter="dir-merge,- .gitignore" \
   "$REPO/" "$GIT_FOLDER/$REPO_NAME/"
 
