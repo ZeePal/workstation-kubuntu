@@ -3,8 +3,7 @@ kde:
     task_bar:
       - preferred://filemanager
       - preferred://browser
-      - applications:com.alacritty.Alacritty.desktop
-      - applications:code.desktop
+      - applications:Alacritty.desktop
     start_menu:
       - applications:discord_discord.desktop
       - applications:signal-desktop.desktop
