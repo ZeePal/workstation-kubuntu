@@ -46,3 +46,10 @@
     block: |
       export SSH_ASKPASS_REQUIRE=prefer
       export SSH_ASKPASS=/usr/bin/ksshaskpass
+
+- name: Disable Plasma Browser Integration
+  kconfig:
+    file: ~/.config/kded5rc
+    groups: [PlasmaBrowserIntegration]
+    key: shownCount
+    value: "100"

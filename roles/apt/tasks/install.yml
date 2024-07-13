@@ -101,3 +101,11 @@
       - pylint
       - black
       - isort
+
+      # KDE Notification Language Support
+      - gimp-help-en
+      - gimp-help-en-gb
+      - hunspell-en-au
+      - hunspell-en-ca
+      - hunspell-en-gb
+      - hunspell-en-za
