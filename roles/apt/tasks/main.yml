@@ -1,4 +1,3 @@
-- import_tasks: mirror.yml
 - import_tasks: repos/main.yml
 
 - name: Refresh apt if changed
