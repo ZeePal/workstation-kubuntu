@@ -22,6 +22,8 @@
       function mcd { mkdir -p "$1" && cd "$1"; }
 
       alias srm='shred -f -u -v -z --random-source=<(openssl enc -aes-128-ctr -pbkdf2 -nosalt -pass "pass:$(dd if=/dev/urandom bs=128 count=1 status=none |base64 -w 0)" </dev/zero)'
+      alias generate_random='openssl enc -aes-128-ctr -pbkdf2 -nosalt -pass "pass:$(dd if=/dev/urandom bs=128 count=1 status=none |base64 -w 0)" </dev/zero'
+
       alias gssh='gcloud compute ssh --tunnel-through-iap'
       alias glogin='gcloud auth login --update-adc'
 
