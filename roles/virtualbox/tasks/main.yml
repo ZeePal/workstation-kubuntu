@@ -1,0 +1,4 @@
+- name: Adding to vboxusers 
+  user: name={{ USER }}
+        groups=vboxusers
+        append=yes
