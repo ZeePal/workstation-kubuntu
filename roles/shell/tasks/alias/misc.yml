@@ -20,3 +20,22 @@
 
       complete -o nospace -F _fzf_dir_completion mcd
       function mcd { mkdir -p "$1" && cd "$1"; }
+
+      alias srm='shred -f -u -v -z --random-source=<(openssl enc -aes-128-ctr -pbkdf2 -nosalt -pass "pass:$(dd if=/dev/urandom bs=128 count=1 status=none |base64 -w 0)" </dev/zero)'
+      alias gssh='gcloud compute ssh --tunnel-through-iap'
+      alias glogin='gcloud auth login --update-adc'
+
+      function mvd {
+          for file in "$@"; do
+              local enabled_name="${file%.DISABLED}"
+              local disabled_name="${enabled_name}.DISABLED"
+
+              if [ -e "$enabled_name" ]; then
+                  mv --no-clobber --verbose "$enabled_name" "$disabled_name"
+              elif [ -e "$disabled_name" ]; then
+                  mv --no-clobber --verbose "$disabled_name" "$enabled_name"
+              else
+                  echo "WARNING: Unable to locate '$enabled_name' or '$disabled_name'" >&2
+              fi
+          done
+      }

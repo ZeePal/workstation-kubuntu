@@ -39,3 +39,4 @@
     block: |
       [init]
           templateDir = {{ HOME }}/.git-templates/git-secrets
+          defaultBranch = main

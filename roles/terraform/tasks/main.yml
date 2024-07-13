@@ -28,11 +28,17 @@
     mode: u=rw,go=r
     block: |
       alias t=terraform
+      alias trm="rm -rf .terraform/ .terraform.lock.hcl"
       alias ti="terraform init"
       alias tv="terraform validate"
-      alias tp="terraform plan -parallelism=1000"
+
+      alias tp="terraform plan -parallelism=1000 -out plan.tfplan"
+      alias tpa="terraform apply -parallelism=1000 plan.tfplan"
       alias tpl="terraform plan -parallelism=1000 -lock=false"
+
       alias ta="terraform apply -parallelism=1000 -auto-approve"
+      alias taa="terraform apply -parallelism=1000"
+
       alias tg="terraform graph -draw-cycles|dot -Tsvg > /tmp/graph.svg && xdg-open /tmp/graph.svg"
 
 - name: Terraforms plugin cache folder

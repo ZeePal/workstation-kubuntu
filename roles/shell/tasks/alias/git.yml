@@ -7,11 +7,19 @@
     block: |
       alias g=git
       alias gs="git status"
+
       alias gd="git diff"
       alias gD="git difftool --dir-diff"
       alias gdc="git diff --cached"
       alias gDc="git difftool --dir-diff --cached"
+
       alias ga="git add ."
       alias gc="git commit -m"
       alias gp="git push"
       alias gf="git pull --ff-only"
+      alias gfm="gcom && gf"
+      alias gfa="git pull --ff-only --all"
+
+      alias gco="git checkout"
+      alias gcom='git checkout "$(remote_default="$(git branch -lr origin/HEAD)";remote_default="${remote_default##*/}";echo "${remote_default:-main}")"'
+      alias gcon="git checkout -b"

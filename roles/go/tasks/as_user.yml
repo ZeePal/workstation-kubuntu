@@ -4,3 +4,9 @@
     marker: "# {mark} GoBin"
     block: |
       export PATH="$PATH:$HOME/go/bin"
+      export GOPATH="$HOME/go"
+
+- name: Install go apps
+  command: go install "{{ item }}"
+  with_items:
+    - github.com/aquasecurity/tfsec/cmd/tfsec@latest

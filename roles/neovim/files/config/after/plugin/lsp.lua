@@ -20,21 +20,62 @@ end)
 require('mason').setup({})
 require('mason-lspconfig').setup({
   ensure_installed = {
-      -- TODO: :MasonInstall prettierd
       'lua_ls',
       'bashls',
       'jsonls',
       'yamlls',
 	  'terraformls',
 	  'pyright',
+      'marksman',
+      --'actionlint',  -- TODO
 	  --'gopls',  -- TODO
 	  --'rust_analyzer', -- TODO
   },
   handlers = {
     lsp_zero.default_setup,
+
     lua_ls = function()
       local lua_opts = lsp_zero.nvim_lua_ls()
       require('lspconfig').lua_ls.setup(lua_opts)
+    end,
+
+    yamlls = function()
+        require('lspconfig').yamlls.setup({
+            settings = {
+                yaml = {
+                    format = {
+                        enable = true
+                    },
+                    hover = true,
+                    completion = true,
+                    schemaStore = {
+                        enable = true
+                    },
+
+                    customTags = {
+                        "!And sequence",
+                        "!Base64 scalar",
+                        "!Cidr scalar",
+                        "!Condition scalar",
+                        "!Equals sequence",
+                        "!FindInMap sequence",
+                        "!GetAtt scalar",
+                        "!GetAtt sequence",
+                        "!GetAZs scalar",
+                        "!If sequence",
+                        "!ImportValue scalar",
+                        "!Join sequence",
+                        "!Not sequence",
+                        "!Or sequence",
+                        "!Ref scalar",
+                        "!Select sequence",
+                        "!Split sequence",
+                        "!Sub scalar",
+                        "!Transform mapping",
+                    }
+                }
+            }
+        })
     end,
   }
 })

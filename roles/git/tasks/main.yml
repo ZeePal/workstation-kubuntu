@@ -25,6 +25,8 @@
         gpgsign = true
       [tag]
         gpgsign = true
+      [push]
+          autoSetupRemote = true
 
 - name: Git config folder
   file:

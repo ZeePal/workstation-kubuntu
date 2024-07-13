@@ -15,3 +15,6 @@
     cmd: |
       git clone --depth 1 https://github.com/wbthomason/packer.nvim ~/.local/share/nvim/site/pack/packer/start/packer.nvim
     creates: "{{ HOME }}/.local/share/nvim/site/pack/packer/start/packer.nvim"
+
+- name: Install Packer Packages
+  command: nvim --headless -c 'autocmd User PackerComplete quitall' -c 'PackerSync'

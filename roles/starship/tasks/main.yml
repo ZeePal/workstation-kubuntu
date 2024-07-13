@@ -11,6 +11,7 @@
 
       # Moved directory to second last (from default order)
       format = """
+      $time\
       $username\
       $hostname\
       $localip\
@@ -77,7 +78,6 @@
       $line_break\
       $jobs\
       $battery\
-      $time\
       $status\
       $shell\
       $directory\
@@ -87,10 +87,15 @@
       [line_break]
       disabled = true
 
+      [time]
+      disabled = false
+      format = "[$time]($style) "
+      time_format = "%H:%M"
+
       [directory]
       format = "[$path]($style)[$read_only]($read_only_style)"
       [cmd_duration]
-      format = "⏱️ [$duration]($style) "
+      format = "⏱️[$duration]($style) "
 
       [gcloud.region_aliases]
       australia-southeast1 = "au"
@@ -115,6 +120,7 @@
       [aws]
       symbol = "☁️ "
       format = '[$symbol$profile(\($region\))]($style) '
+      force_display = true
 
       [python]
       symbol = "🐍"

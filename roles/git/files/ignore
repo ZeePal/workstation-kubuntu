@@ -18,6 +18,7 @@ dmypy.json
 .terraform/
 *.tfstate
 *.tfstate.*
+plan.tfplan
 
 
 

@@ -1,8 +1,10 @@
 require("todo-comments").setup({
     highlight = {
-        pattern = [[<(KEYWORDS)>]],
+        comments_only = false,
+        pattern = [[<(KEYWORDS)>]], -- Vim Regex
+        keyword = "bg", -- No "Wide" plz
     },
     search = {
-        pattern = [[\b(KEYWORDS)\b]],
+        pattern = [[\b(KEYWORDS)\b]],  -- RipGrep Regex
     },
 })
