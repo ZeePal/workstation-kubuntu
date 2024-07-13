@@ -101,6 +101,7 @@
       - pylint
       - black
       - isort
+      - pre-commit
 
       # KDE Notification Language Support
       - gimp-help-en

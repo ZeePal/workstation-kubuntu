@@ -1,3 +1,28 @@
+- name: Git config folder
+  file:
+    state: directory
+    path: "{{ HOME }}/.config/git"
+    owner: "{{ USER }}"
+    group: "{{ USER }}"
+    mode: u=wrx,go=rx
+
+- name: Create Git Template folder
+  file:
+    state: directory
+    path: "{{ HOME }}/.config/git/templatedir"
+    mode: u=rwx,go=rx
+
+- name: Git to use templateDir
+  blockinfile:
+    path: "{{ HOME }}/.gitconfig"
+    marker: "# {mark} template"
+    create: true
+    mode: u=rw,go=r
+    block: |
+      [init]
+          defaultBranch = main
+          templateDir = {{ HOME }}/.config/git/templatedir
+
 - name: Configure Meld as the difftool for git
   blockinfile:
     path: "{{ HOME }}/.gitconfig"
@@ -28,14 +53,6 @@
       [push]
           autoSetupRemote = true
 
-- name: Git config folder
-  file:
-    state: directory
-    path: "{{ HOME }}/.config/git"
-    owner: "{{ USER }}"
-    group: "{{ USER }}"
-    mode: u=wrx,go=rx
-
 - name: Fallback .gitignore
   copy:
     src: "{{ role_path }}/files/ignore"
@@ -43,3 +60,16 @@
     owner: "{{ USER }}"
     group: "{{ USER }}"
     mode: u=rwx,go=rx
+
+- name: Fallback .pre-commit-config.yaml
+  copy:
+    src: "{{ role_path }}/files/pre-commit-config.yaml"
+    dest: "{{ HOME }}/.config/git/pre-commit-config.yaml"
+    owner: "{{ USER }}"
+    group: "{{ USER }}"
+    mode: u=rwx,go=rx
+
+- name: Install pre-commit into Git Template Folder
+  command:
+    cmd: pre-commit init-templatedir "{{ HOME }}/.config/git/templatedir" --config "{{ HOME }}/.config/git/pre-commit-config.yaml"
+    creates: "{{ HOME }}/.config/git/templatedir/hooks/pre-commit"

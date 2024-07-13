@@ -1,14 +1,3 @@
-- name: Create Git Template folder for Git-Secrets
-  file:
-    state: directory
-    path: "{{ HOME }}/.git-templates/git-secrets"
-    mode: u=rwx,go=rx
-
-- name: Install Git-Secrets into Git Template Folder
-  command:
-    cmd: git secrets --install "{{ HOME }}/.git-templates/git-secrets"
-    creates: "{{ HOME }}/.git-templates/git-secrets/hooks/pre-commit"
-
 - name: Get current Git-Secrets patterns
   command: git secrets --list
   check_mode: false # always run the task
@@ -29,14 +18,3 @@
   with_items:
     - '\-----BEGIN [A-Z ]*PRIVATE KEY-----' # x509 Private Keys (Inc GCP Service Keys)
     - "ya29" # Current GCP Access Token Prefix
-
-- name: Git to use Git-Secrets by default
-  blockinfile:
-    path: "{{ HOME }}/.gitconfig"
-    marker: "# {mark} Git-Secrets"
-    create: true
-    mode: u=rw,go=r
-    block: |
-      [init]
-          templateDir = {{ HOME }}/.git-templates/git-secrets
-          defaultBranch = main

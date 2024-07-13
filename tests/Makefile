@@ -41,7 +41,7 @@ $(VM_FOLDER)/$(VM_NAME)/$(VM_NAME).vbox:
 		--name "SATA Controller" \
 		--add sata --portcount 3 \
 		--hostiocache on --bootable on
-	VBoxManage createmedium disk --size 30720 \
+	VBoxManage createmedium disk --size 51200 \
 		--filename "$(VM_DISK)"
 	VBoxManage storageattach "$(VM_NAME)" --storagectl "SATA Controller" \
 		--type hdd --port 0 --device 0 --nonrotational on \

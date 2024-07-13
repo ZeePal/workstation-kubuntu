@@ -21,8 +21,11 @@ chmod +x /tmp/bootstrap
 
 
 # Checklist after above
+- Open `vi .` & let update/compile
+- `git config --global user.email 'EMAIL'`
+- `git config --global user.name 'NAME'`
 - GPG Key
 - KDE Wallet
 - Chrome
 - SSH Key
-- Open `vi .` & let update/compile
+- Git Commit & let pre-commit setup all fallback hooks
