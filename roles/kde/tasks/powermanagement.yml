@@ -1,3 +1,15 @@
+- name: Power Management Profiles
+  kconfig:
+    file: ~/.config/powermanagementprofilesrc
+    groups: ["{{ item.key }}", PowerProfile]
+    key: profile
+    value: "{{ item.value }}"
+  with_dict:
+    AC: performance
+    Battery: balanced
+    LowBattery: power-saver
+
+
 - name: Power Management AC Buttons
   kconfig:
     file: ~/.config/powermanagementprofilesrc
@@ -27,3 +39,5 @@
   with_dict:
     lidAction: "32"
     powerButtonAction: "8"
+
+
