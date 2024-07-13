@@ -11,6 +11,6 @@
 - import_tasks: signal.yml
 - import_tasks: docker.yml
 - import_tasks: hashicorp.yml
-- import_tasks: vscode.yml
 - import_tasks: alacritty.yml
 - import_tasks: node_source.yml
+- import_tasks: commonfate.yml

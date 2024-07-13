@@ -1,7 +1,7 @@
 # ZeePal's Kubuntu Workstation Installer
 This repo is intended to provide an easy way of building my preferred workstation.
 
-Installation is intended to run on a brand new installation of Ubuntu 22.04.
+Installation is intended to run on a brand new installation of Ubuntu 24.04.
 
 
 ## Lazy Installation
@@ -25,3 +25,4 @@ chmod +x /tmp/bootstrap
 - KDE Wallet
 - Chrome
 - SSH Key
+- Open `vi .` & let update/compile

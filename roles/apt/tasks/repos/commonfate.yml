@@ -1,0 +1,25 @@
+- name: Install the CommonFate apt key
+  apt_key:
+    state: present
+    keyring: /etc/apt/keyrings/commonfate.gpg
+    id: 783A4D1A30574D2ABED049DDDE9D631D2D1DC944
+    url: https://apt.releases.commonfate.io/gpg
+
+- name: Install restrictions for CommonFate apt repo
+  copy:
+    dest: /etc/apt/preferences.d/50-commonfate
+    owner: root
+    group: root
+    mode: u=rw,go=r
+    content: |
+      Package: granted
+      Pin: origin apt.releases.commonfate.io
+      Pin-Priority: 600
+
+- name: Install the CommonFate apt repository
+  apt_repository:
+    state: present
+    repo: deb [arch=amd64 signed-by=/etc/apt/keyrings/commonfate.gpg] https://apt.releases.commonfate.io stable main
+    filename: commonfate
+    update_cache: false
+  notify: Refresh apt

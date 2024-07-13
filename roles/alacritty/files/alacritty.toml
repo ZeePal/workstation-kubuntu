@@ -2,7 +2,7 @@
 startup_mode = "Maximized"
 
 [font]
-size = 7
+size = 10
 
 [selection]
 save_to_clipboard = true

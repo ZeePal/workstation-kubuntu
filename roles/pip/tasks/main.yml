@@ -1,37 +1,10 @@
-- name: Install pip packages
-  pip:
-    state: present
-    executable: pip3
-    name:
-      - ansible-lint
-      - yq
-      - beautifulsoup4
-      - yapf
-      - boto3
-      - botocore
-      - python-lsp-server[all]
-      - cryptography
-      - requests
-      - pyyaml
-      - thefuck
-      - asciinema
-      - docker-compose
-      - cson
-      - flake8
-      - pyflakes
-      - pycodestyle
-      - cfn-lint
-      - beautysh
-      - pwntools
-      - inotify
-      - jmespath
-      - cfn-flip
-      - howdoi
-      - prospector[with_everything]
-      - bandit
-      - mypy
-      - boto3-stubs[all]
-      - types-requests
-      - types-python-dateutil
-      - types-cachetools
-      - types-PyYAML
+- name: Install pipx
+  become: true
+  become_user: "{{ USER }}"
+  community.general.pipx:
+    name: "{{ item }}"
+  with_items:
+    - ansible-lint
+    - asciinema
+    - cfn-lint
+    - howdoi

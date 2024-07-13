@@ -19,7 +19,7 @@
     value: "{{ item.value }}"
   with_dict:
     TerminalApplication: alacritty
-    TerminalService: com.alacritty.Alacritty.desktop
+    TerminalService: Alacritty.desktop
 
 - name: Get CtrlAltR shortcut config
   kconfig:
@@ -35,13 +35,20 @@
     key: repeat_action
     value: "none,{{ kde_ctrl_alt_r.value.split(',', 1)[1] }}"
 
+- name: Remove CtrlAltT shortcut conflict
+  kconfig:
+    file: ~/.config/kglobalshortcutsrc
+    groups: [org.kde.konsole.desktop]
+    key: _launch
+    value: none,Ctrl+Alt+T,Konsole
+
 - name: Update CtrlAltT to Alacritty
-  replace:
-    path: "{{ HOME }}/.config/khotkeysrc"
-    regexp: "{{ item.key }}"
-    replace: "{{ item.value }}"
+  kconfig:
+    file: ~/.config/kglobalshortcutsrc
+    groups: [Alacritty.desktop]
+    key: "{{ item.key }}"
+    value: "{{ item.value }}"
   with_dict:
-    Name=Launch Konsole: Name=Launch Alacritty
-    CommandURL=org\.kde\.konsole\.desktop: CommandURL=com.alacritty.Alacritty.desktop
-    Name=Run Konsole: Name=Run Alacritty
-    CommandURL=konsole: CommandURL=alacritty
+    New: none,none,New Terminal
+    _k_friendly_name: Alacritty
+    _launch: Ctrl+Alt+T,none,Alacritty

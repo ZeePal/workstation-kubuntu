@@ -1,10 +1,10 @@
 VM_NAME ?= test-workstation-kubuntu
 VM_FOLDER ?= $(PWD)/vm
 VM_DISK ?= $(VM_FOLDER)/$(VM_NAME).root
-VM_ISO ?= $(HOME)/Downloads/ubuntu-22.04.1-live-server-amd64.iso
+VM_ISO ?= $(HOME)/Downloads/ubuntu-24.04-live-server-amd64.iso
 
 
-.PHONY: start-test # ~23min to run
+.PHONY: start-test # ~19min to run
 start-test: $(VM_FOLDER)/$(VM_NAME)/$(VM_NAME).vbox
 	VBoxManage controlvm "$(VM_NAME)" poweroff || true
 	rm -rf "$(VM_FOLDER)/output"
@@ -14,7 +14,7 @@ start-test: $(VM_FOLDER)/$(VM_NAME)/$(VM_NAME).vbox
 	VBoxManage startvm "$(VM_NAME)"
 
 
-.PHONY: build-vm # ~12min to run
+.PHONY: build-vm # ~18min to run
 build-vm: $(VM_FOLDER)/$(VM_NAME)/$(VM_NAME).vbox
 $(VM_FOLDER)/$(VM_NAME)/$(VM_NAME).vbox:
 	mkdir -p "$(VM_FOLDER)/output"
@@ -26,12 +26,12 @@ $(VM_FOLDER)/$(VM_NAME)/$(VM_NAME).vbox:
 	VBoxManage modifyvm "$(VM_NAME)" \
 		--description https://github.com/ZeePal/workstation-kubuntu \
 		--ostype Ubuntu_64 \
-		--memory 4096 --vram 16 --nestedpaging on \
+		--memory 4096 --nestedpaging on \
 		--cpus 4 --cpu-profile host --pae on --longmode on \
 		--acpi on --ioapic on --x2apic on --firmware efi --rtcuseutc on \
 		--boot1 dvd --boot2 disk --boot3 none --boot4 none \
 		--nic1 nat --nictype1 82540EM \
-		--graphicscontroller vmsvga --accelerate3d on --monitorcount 1 \
+		--graphicscontroller vmsvga --vram 128 --accelerate3d on --monitorcount 1 \
 		--audio pulse --audiocodec ad1980 --audioin off --audioout on \
 		--mouse usbtablet --usbohci on \
 		--clipboard-mode disabled --draganddrop disabled
