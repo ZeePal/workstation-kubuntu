@@ -102,6 +102,7 @@
       - black
       - isort
       - pre-commit
+      - partitionmanager
 
       # KDE Notification Language Support
       - gimp-help-en

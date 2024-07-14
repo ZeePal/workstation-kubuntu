@@ -1,0 +1,31 @@
+- name: Create download folder
+  file:
+    state: directory
+    path: /opt/nerdfont
+    mode: u=rwX,go=rX
+
+- name: Create fonts folder
+  file:
+    state: directory
+    path: "{{ HOME }}/.local/share/fonts"
+    mode: u=rwX,go=rX
+
+- name: Download Nerdfont
+  get_url:
+    url: https://github.com/ryanoasis/nerd-fonts/releases/download/v3.2.1/UbuntuMono.tar.xz
+    dest: /opt/nerdfont/UbuntuMono_v3.2.1.tar.xz
+    mode: u=rw,go=r
+
+- name: Extract Nerdfont
+  unarchive:
+    src: /opt/nerdfont/UbuntuMono_v3.2.1.tar.xz
+    dest: "{{ HOME }}/.local/share/fonts/"
+    creates: "{{ HOME }}/.local/share/fonts/UbuntuMonoNerdFontMono-Regular.ttf"
+  register: extract_nerdfont
+
+- name: Update font change
+  when: extract_nerdfont.changed
+  become: true
+  become_user: "{{ USER }}"
+  command: fc-cache -fv
+
