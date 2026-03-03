@@ -7,8 +7,8 @@
 - name: Download AWS cli gpg key
   shell:
     cmd: |
-      curl https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html \
-        |sed -r -n '/-----BEGIN PGP PUBLIC KEY BLOCK-----/,/-----END PGP PUBLIC KEY BLOCK-----/p' \
+      curl -s https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html \
+        |sed -r -n '/-----BEGIN PGP PUBLIC KEY BLOCK-----/,/-----END PGP PUBLIC KEY BLOCK-----/{p; /-----END PGP PUBLIC KEY BLOCK-----/q;}' \
         |sed -r 's/^.*(-----BEGIN PGP PUBLIC KEY BLOCK-----)/\1/;s/(-----END PGP PUBLIC KEY BLOCK-----).*$/\1/' > /opt/aws/cli/awscli.gpg.asc
     creates: /opt/aws/cli/awscli.gpg
 
@@ -20,7 +20,7 @@
   register: awscli_gpg_key_hash
 
 - name: Verify AWS cli gpg key hash
-  when: awscli_gpg_key_hash.stat.checksum != 'd1db2601687fca3c9548af229a7abd5d8fa0144378deb0d9f22e53ba3b54957df351aa2e31bceebdaea69b847ebfb4a1e769c59e329ee99d885653d0b7eb8b35'
+  when: awscli_gpg_key_hash.stat.checksum != 'e79ae0aa2c78bd33938820109026c42b8f803e74b1db0645555fe1e3ab0019051a539d3b69727f508a7341cf028e38709adbcfa4214a8ac0a79a24fc5e194c3a'
   fail:
     msg: AWS cli gpg key hash doesnt match the expected hash
 

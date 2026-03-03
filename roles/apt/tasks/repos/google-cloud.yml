@@ -2,7 +2,7 @@
   apt_key:
     state: present
     keyring: /etc/apt/keyrings/google-cloud.gpg
-    id: A362B822F6DEDC652817EA46B53DC80D13EDEF05
+    id: 35BAA0B33E9EB396F59CA838C0BA5CE6DC6315A3
     url: https://packages.cloud.google.com/apt/doc/apt-key.gpg
 
 - name: Install restrictions for Google Cloud apt repo
