@@ -12,13 +12,14 @@
 
 - name: Download Nerdfont
   get_url:
-    url: https://github.com/ryanoasis/nerd-fonts/releases/download/v3.2.1/UbuntuMono.tar.xz
-    dest: /opt/nerdfont/UbuntuMono_v3.2.1.tar.xz
+    url: https://github.com/ryanoasis/nerd-fonts/releases/download/v3.4.0/UbuntuMono.tar.xz
+    dest: /opt/nerdfont/UbuntuMono_v3.4.0.tar.xz
+    checksum: sha512:455da63dc9c956dd454e3ca5c2390bf67e464902cebee54c0541d1f54336147ae49d82988f79d733e477e26c975edef1a7fbae80df4afd9921d0325ff5c28c4d
     mode: u=rw,go=r
 
 - name: Extract Nerdfont
   unarchive:
-    src: /opt/nerdfont/UbuntuMono_v3.2.1.tar.xz
+    src: /opt/nerdfont/UbuntuMono_v3.4.0.tar.xz
     dest: "{{ HOME }}/.local/share/fonts/"
     creates: "{{ HOME }}/.local/share/fonts/UbuntuMonoNerdFontMono-Regular.ttf"
   register: extract_nerdfont
