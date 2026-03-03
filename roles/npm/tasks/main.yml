@@ -1,0 +1,8 @@
+- name: Install npm packages
+  become: true
+  become_user: "{{ USER }}"
+  community.general.npm:
+    name: "{{ item }}"
+    global: true
+  with_items:
+    - opencode-ai
