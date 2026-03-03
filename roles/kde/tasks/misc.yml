@@ -39,14 +39,6 @@
     path: "{{ HOME }}/.config/autostart"
     mode: u=rwx,go=rx
 
-- name: KDE ssh-agent
-  blockinfile:
-    path: "{{ HOME }}/.profile"
-    marker: "# {mark} kde ssh-agent"
-    block: |
-      export SSH_ASKPASS_REQUIRE=prefer
-      export SSH_ASKPASS=/usr/bin/ksshaskpass
-
 - name: Disable Plasma Browser Integration
   kconfig:
     file: ~/.config/kded5rc

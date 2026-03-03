@@ -4,13 +4,6 @@
     path: "{{ HOME }}/bin/"
     mode: u=wrx,go=rx
 
-- name: Setup $PATH for $HOME/bin
-  blockinfile:
-    dest: "{{ HOME }}/.bashrc"
-    marker: "# {mark} HomeBin"
-    block: |
-      export PATH="$PATH:$HOME/bin"
-
 - name: Create git repos folder
   file:
     state: directory

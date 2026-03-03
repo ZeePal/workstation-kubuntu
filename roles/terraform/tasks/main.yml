@@ -18,29 +18,6 @@
     dest: /usr/local/bin/tfdef
     mode: u=rwx,go=rx
 
-- name: Setup Terraform command aliases
-  blockinfile:
-    path: "{{ HOME }}/.bash_aliases"
-    marker: "# {mark} Terraform"
-    create: true
-    owner: "{{ USER }}"
-    group: "{{ USER }}"
-    mode: u=rw,go=r
-    block: |
-      alias t=terraform
-      alias trm="rm -rf .terraform/ .terraform.lock.hcl"
-      alias ti="terraform init"
-      alias tv="terraform validate"
-
-      alias tp="terraform plan -parallelism=1000 -out plan.tfplan"
-      alias tpa="terraform apply -parallelism=1000 plan.tfplan"
-      alias tpl="terraform plan -parallelism=1000 -lock=false"
-
-      alias ta="terraform apply -parallelism=1000 -auto-approve"
-      alias taa="terraform apply -parallelism=1000"
-
-      alias tg="terraform graph -draw-cycles|dot -Tsvg > /tmp/graph.svg && xdg-open /tmp/graph.svg"
-
 - name: Terraforms plugin cache folder
   file:
     state: directory
@@ -48,10 +25,3 @@
     owner: "{{ USER }}"
     group: "{{ USER }}"
     mode: u=rwx,g=rx,o=rx
-
-- name: Setup Terraform plugin cache
-  blockinfile:
-    dest: "{{ HOME }}/.bashrc"
-    marker: "# {mark} Terraform Plugin Cache"
-    block: |
-      export TF_PLUGIN_CACHE_DIR="$HOME/.terraform.d/plugin-cache"

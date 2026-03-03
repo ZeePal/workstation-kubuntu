@@ -6,7 +6,3 @@
     owner: root
     group: root
     mode: u=rwx,go=rx
-
-- import_tasks: as_user.yml
-  become: true
-  become_user: "{{ USER }}"

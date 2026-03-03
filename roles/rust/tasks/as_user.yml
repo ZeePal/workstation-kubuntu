@@ -1,6 +1,6 @@
 # TODO: Find a more secure way to install rust with the rustup manager
 - name: Installing Rust
-  shell: curl --proto '=https' --tlsv1.3 -sSf https://sh.rustup.rs | sh -s -- -y -c rls rust-src
+  shell: curl --proto '=https' --tlsv1.3 -sSf https://sh.rustup.rs | sh -s -- -y -c rust-src
   args:
     creates: "{{ HOME }}/.cargo/bin/rustup"
 
@@ -9,10 +9,3 @@
   check_mode: false # always run the task
   register: rust_version
   changed_when: false
-
-- name: Setup Rust PATH
-  blockinfile:
-    path: "{{ HOME }}/.bashrc"
-    marker: "# {mark} Rust"
-    block: |
-      export PATH="$HOME/.cargo/bin:$PATH"

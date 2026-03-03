@@ -15,7 +15,7 @@
 
 - name: Download latest version of NeoVim
   loop: "{{ github_latest_release.json.assets }}"
-  when: "item.name == 'nvim.appimage'"
+  when: "item.name == 'nvim-linux-x86_64.appimage'"
   get_url:
     url: "{{ item.browser_download_url }}"
     dest: "/opt/neovim/nvim_{{ github_latest_release.json.tag_name }}.appimage"

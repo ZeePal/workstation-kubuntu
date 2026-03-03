@@ -5,13 +5,6 @@
   environment:
     XDG_RUNTIME_DIR: "/run/user/{{ UID }}"
 
-- name: Setup Docker host envvar
-  blockinfile:
-    dest: ~/.bashrc
-    marker: "# {mark} Docker-Rootless"
-    block: |
-      export DOCKER_HOST="unix://$XDG_RUNTIME_DIR/docker.sock"
-
 - name: Start Docker service
   systemd:
     scope: user

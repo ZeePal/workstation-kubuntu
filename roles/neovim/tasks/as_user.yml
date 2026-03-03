@@ -1,20 +1,12 @@
-- name: Create NeoVim config folder
-  file:
-    state: directory
-    path: "{{ HOME }}/.config/nvim/"
-    mode: u=wrx,go=rx
-
-- name: Copy in NeoVim config
-  copy:
-    src: "{{ role_path }}/files/config/"
-    dest: "{{ HOME }}/.config/nvim/"
-    mode: u=rw,go=r
-
-- name: Bootstrap NeoVim Packer
+- name: Bootstrap NeoVim Package Managers/Installers
   command:
-    cmd: |
-      git clone --depth 1 https://github.com/wbthomason/packer.nvim ~/.local/share/nvim/site/pack/packer/start/packer.nvim
-    creates: "{{ HOME }}/.local/share/nvim/site/pack/packer/start/packer.nvim"
+    cmd: nvim --headless '+Lazy! restore' '+TSUpdateSync' +qa && nvim --headless '+Lazy! restore' '+TSUpdateSync' +qa
+    creates: "{{ HOME }}/.local/share/nvim/lazy/lazy.nvim"
+  register: init_bootstrap_neovim
 
-- name: Install Packer Packages
-  command: nvim --headless -c 'autocmd User PackerComplete quitall' -c 'PackerSync'
+- name: Try and Install at least some of the Mason Packages from ensure_installed's
+  when: init_bootstrap_neovim.changed
+  command:
+    cmd: nvim /tmp/test.py
+  async: 3600
+  poll: 0  # nohup, as its bootstrapping, we will reboot soon

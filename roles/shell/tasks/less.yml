@@ -1,6 +1,0 @@
-- name: Setup Less
-  blockinfile:
-    path: "{{ HOME }}/.bashrc"
-    marker: "# {mark} Less"
-    block: |
-      export LESS=-i

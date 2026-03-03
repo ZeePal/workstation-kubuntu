@@ -1,0 +1,44 @@
+- name: Clone .dotfiles repository
+  git:
+    repo: https://github.com/ZeePal/.dotfiles
+    dest: "{{ HOME }}/.dotfiles"
+    clone: true
+    update: false
+  when: lookup('ansible.builtin.env', 'ZP_TEST_MODE') != 'true'
+
+- name: ZP_TEST_MODE - copying .dotfiles repository
+  ansible.posix.synchronize:
+    src: /mnt/dotfiles/
+    dest: "{{ HOME }}/.dotfiles/"
+    archive: true
+  when: lookup('ansible.builtin.env', 'ZP_TEST_MODE') == 'true'
+
+- name: Symlink .dotfiles repo
+  file:
+    state: link
+    path: "{{ HOME }}/git/.dotfiles"
+    src: "{{ HOME }}/.dotfiles"
+
+- name: Check status of .bashrc
+  stat:
+    path: "{{ HOME }}/.bashrc"
+  register: stat_bashrc
+
+- name: Force clear Bash files for .dotfiles install on fresh systems
+  when: stat_bashrc.stat.exists and not stat_bashrc.stat.islnk
+  file:
+    path: "{{ item }}"
+    state: absent
+  with_items:
+    - "{{ HOME }}/.bashrc"
+    - "{{ HOME }}/.profile"
+
+- name: Check for dotfiles installation drift
+  command: "{{ HOME }}/.dotfiles/install --check"
+  register: dotfiles_check
+  check_mode: false
+  changed_when: dotfiles_check.stdout | length > 0
+
+- name: Install dotfiles # noqa: no-changed-when
+  command: "{{ HOME }}/.dotfiles/install"
+  when: dotfiles_check.changed # noqa: no-handler
