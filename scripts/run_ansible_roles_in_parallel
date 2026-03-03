@@ -1,18 +1,17 @@
 #!/usr/bin/env -S python3 -u
 import argparse
-from dataclasses import dataclass
-from dataclasses import field
-from datetime import datetime
 import os
-from pathlib import Path
 import re
-from signal import SIGCHLD
-from signal import signal
-from subprocess import PIPE  # nosec B404
-from subprocess import Popen  # nosec B404
 import sys
-from threading import Event
-from threading import Thread
+from dataclasses import dataclass, field
+from datetime import datetime
+from pathlib import Path
+from signal import SIGCHLD, signal
+from subprocess import (
+    PIPE,  # nosec B404
+    Popen,  # nosec B404
+)
+from threading import Event, Thread
 from time import time
 
 REPO_DIR = Path(os.path.dirname(os.path.realpath(__file__))).parent
@@ -32,14 +31,15 @@ RE_USEFUL_LINES = re.compile(
 
 ANSIBLE_ENV = os.environ.copy()
 ANSIBLE_ENV["ANSIBLE_PYTHON_INTERPRETER"] = "/usr/bin/python3"
-ANSIBLE_ENV[
-    "ANSIBLE_CALLBACK_PLUGINS"
-] = f"~/.ansible/plugins/callback:/usr/share/ansible/plugins/callback:{REPO_DIR}/callback_plugins"
+ANSIBLE_ENV["ANSIBLE_CALLBACK_PLUGINS"] = (
+    f"~/.ansible/plugins/callback:/usr/share/ansible/plugins/callback:{REPO_DIR}/callback_plugins"
+)
 ANSIBLE_ENV["ANSIBLE_LIBRARY"] = f"~/.ansible/plugins/modules:/usr/share/ansible/plugins/modules:{REPO_DIR}/library"
 ANSIBLE_ENV["ANSIBLE_PIPELINING"] = "true"
 
 ANSIBLE_ENV["ANSIBLE_LOAD_CALLBACK_PLUGINS"] = "true"
 ANSIBLE_ENV["ANSIBLE_STDOUT_CALLBACK"] = "yaml_quiet"
+ANSIBLE_ENV["ANSIBLE_CALLBACK_RESULT_FORMAT"] = "yaml"
 ANSIBLE_ENV["ANSIBLE_FORCE_COLOR"] = "true"
 
 ANSIBLE_ENV["ANSIBLE_CHECK_MODE_MARKERS"] = "true"
@@ -50,7 +50,7 @@ ANSIBLE_ENV["ANSIBLE_DISPLAY_SKIPPED_HOSTS"] = "false"
 
 # Catch all SIGCHLD's to start new ansible roles faster
 SIGCHLD_RECEIVED = Event()
-signal(SIGCHLD, lambda x, y: SIGCHLD_RECEIVED.set())
+signal(SIGCHLD, lambda *_: SIGCHLD_RECEIVED.set())
 
 
 def main():
@@ -67,7 +67,7 @@ def main():
         ANSIBLE_ENV["ANSIBLE_STDOUT_CALLBACK"] = args.stdout
 
     role_tree = build_role_dependency_tree()
-    if args.role:
+    if args.role:  # noqa SIM108
         # Take the set of requested roles & remove excluded roles
         roles_to_run = set(args.role) - set(args.exclude)
     else:
@@ -175,7 +175,7 @@ def build_role_dependency_tree():
         roles[role.name] = role
         depends_on = role_dir / "depends_on"
         if depends_on.exists():
-            with open(depends_on, "r") as file:
+            with open(depends_on) as file:
                 role.depends_on.update(RE_USEFUL_LINES.findall(file.read()))
 
     # Backfill depended_by from depends_on
@@ -259,7 +259,7 @@ def process_finished_role(role_tree, roles_running, errors, pid, exit_code, args
     proc = roles_running.pop(pid)
     role = proc["role"]
     if args.verbose > 0:
-        print(f"{role} - Finished ({time()-proc['start']:.2f}s)")
+        print(f"{role} - Finished ({time() - proc['start']:.2f}s)")
 
     if exit_code != 0:
         error = f"ERROR: {role} - Exit Code: {exit_code}"
@@ -283,7 +283,7 @@ def spawn_ansible_role(role, args):
     if args.diff:
         cmd.append("--diff")
     if args.verbose > 0:
-        cmd.append(f"-{'v'*args.verbose}")
+        cmd.append(f"-{'v' * args.verbose}")
 
     # Execute the requested role locally
     cmd.extend(
@@ -311,7 +311,7 @@ def spawn_ansible_role(role, args):
 
     if args.verbose > 0:
         print(f"{role} - Starting: {cmd}")
-    proc = Popen(  # pylint: disable=consider-using-with # nosec B603
+    proc = Popen(  # pylint: disable=consider-using-with # noqa: S603
         cmd,
         cwd=REPO_DIR,
         env=ANSIBLE_ENV,

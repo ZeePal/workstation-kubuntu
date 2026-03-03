@@ -1,10 +1,10 @@
 VM_NAME ?= test-workstation-kubuntu
 VM_FOLDER ?= $(PWD)/vm
 VM_DISK ?= $(VM_FOLDER)/$(VM_NAME).root
-VM_ISO ?= $(HOME)/Downloads/ubuntu-24.04-live-server-amd64.iso
+VM_ISO ?= $(HOME)/Downloads/ubuntu-24.04.4-live-server-amd64.iso
 
 
-.PHONY: start-test # ~19min to run
+.PHONY: start-test # ~23min to run
 start-test: $(VM_FOLDER)/$(VM_NAME)/$(VM_NAME).vbox
 	VBoxManage controlvm "$(VM_NAME)" poweroff || true
 	rm -rf "$(VM_FOLDER)/output"
@@ -14,7 +14,7 @@ start-test: $(VM_FOLDER)/$(VM_NAME)/$(VM_NAME).vbox
 	VBoxManage startvm "$(VM_NAME)"
 
 
-.PHONY: build-vm # ~18min to run
+.PHONY: build-vm # ~12m to run
 build-vm: $(VM_FOLDER)/$(VM_NAME)/$(VM_NAME).vbox
 $(VM_FOLDER)/$(VM_NAME)/$(VM_NAME).vbox:
 	mkdir -p "$(VM_FOLDER)/output"
@@ -30,7 +30,8 @@ $(VM_FOLDER)/$(VM_NAME)/$(VM_NAME).vbox:
 		--cpus 4 --cpu-profile host --pae on --longmode on \
 		--acpi on --ioapic on --x2apic on --firmware efi --rtcuseutc on \
 		--boot1 dvd --boot2 disk --boot3 none --boot4 none \
-		--nic1 nat --nictype1 82540EM \
+		--nic1 bridged --nictype1 virtio \
+		--bridge-adapter1 $(shell ip route show default |awk '/default/ {print $$5}') \
 		--graphicscontroller vmsvga --vram 128 --accelerate3d on --monitorcount 1 \
 		--audio pulse --audiocodec ad1980 --audioin off --audioout on \
 		--mouse usbtablet --usbohci on \
@@ -65,6 +66,11 @@ $(VM_FOLDER)/$(VM_NAME)/$(VM_NAME).vbox:
 		--auto-mount-point /mnt/workstation-kubuntu \
 		--automount --readonly
 	VBoxManage sharedfolder add "$(VM_NAME)" \
+		--name dotfiles \
+		--hostpath "$(HOME)/.dotfiles" \
+		--auto-mount-point /mnt/dotfiles \
+		--automount --readonly
+	VBoxManage sharedfolder add "$(VM_NAME)" \
 		--name output \
 		--hostpath "$(VM_FOLDER)/output" \
 		--auto-mount-point /mnt/output \
@@ -74,7 +80,7 @@ $(VM_FOLDER)/$(VM_NAME)/$(VM_NAME).vbox:
 	VBoxManage startvm "$(VM_NAME)"
 	while true; do \
 		if VBoxManage list runningvms | grep -q "$(VM_NAME)"; then \
-			echo 'Waiting for autoinstall & user_data to finish... (Manually say "yes" to "Continue with autoinstall (yes|no)?")'; \
+			echo 'Waiting for autoinstall & user_data to finish...'; \
 			sleep 10; \
 		else \
 			break; \

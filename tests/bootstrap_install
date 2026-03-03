@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
+export ZP_TEST_MODE=true
 
 echo "Simulating real ./scripts/bootstrap_install..."
 GIT_FOLDER=~/git/ZeePal
@@ -17,8 +18,8 @@ echo "Cloning Dev Git Repo..."
 mkdir -p "$GIT_FOLDER"
 cd "$GIT_FOLDER"
 rsync -a --delete \
-  --filter="dir-merge,- .gitignore" \
-  "$REPO/" "$GIT_FOLDER/$REPO_NAME/"
+    --filter="dir-merge,- .gitignore" \
+    "$REPO/" "$GIT_FOLDER/$REPO_NAME/"
 
 echo "Starting full install..."
 cd "$REPO_NAME"

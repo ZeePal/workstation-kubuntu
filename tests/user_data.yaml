@@ -1,4 +1,8 @@
 #cloud-config
+bootcmd: # dont ask me, just build :P
+  - [sh, -c, 'echo "$(cat /proc/cmdline) autoinstall" >/root/.cmdline']
+  - [mount, --no-mtab, --bind, -o, ro, /root/.cmdline, /proc/cmdline]
+
 autoinstall:
   version: 1
   identity:
