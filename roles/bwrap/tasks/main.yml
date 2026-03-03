@@ -1,0 +1,14 @@
+- name: Install bwrap apparmor profile
+  copy:
+    src: "{{ role_path }}/files/bwrap"
+    dest: /etc/apparmor.d/bwrap
+    mode: u=rw,go=r
+    owner: root
+    group: root
+  register: bwrap_profile
+
+- name: Reload AppArmor
+  ansible.builtin.systemd_service:
+    name: apparmor.service
+    state: reloaded
+  when: bwrap_profile.changed
