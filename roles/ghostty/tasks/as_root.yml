@@ -1,0 +1,21 @@
+- name: Create download folder
+  file:
+    state: directory
+    path: /opt/ghostty
+    mode: u=rwX,go=rX
+
+- name: Download Ghostty
+  get_url:
+    url: https://github.com/mkasberg/ghostty-ubuntu/releases/download/1.2.3-0-ppa1/ghostty_1.2.3-0.ppa1_amd64_24.04.deb
+    dest: /opt/ghostty/ghostty_1.2.3-0.ppa1_amd64_24.04.deb
+    checksum: sha512:58d953596f32979227397cf6caf99ca7b9c53b0a823ad761fae80420c964ace8737e7b0c4c81f283ee94172ce72135b05f0fcfffef51bfb176800d1483bf49f1
+    mode: u=rw,go=r
+
+- name: Install Ghostty
+  apt:
+    deb: /opt/ghostty/ghostty_1.2.3-0.ppa1_amd64_24.04.deb
+
+- name: Set Ghostty as default Terminal, part 1
+  alternatives:
+    name: x-terminal-emulator
+    path: /usr/bin/ghostty

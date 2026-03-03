@@ -1,0 +1,40 @@
+- name: Set Ghostty as default Terminal, part 2
+  kconfig:
+    groups: [General]
+    key: "{{ item.key }}"
+    value: "{{ item.value }}"
+  with_dict:
+    TerminalApplication: ghostty
+    TerminalService: com.mitchellh.ghostty.desktop
+
+- name: Get CtrlAltR shortcut config
+  kconfig:
+    file: ~/.config/kglobalshortcutsrc
+    groups: [plasmashell]
+    key: repeat_action
+  register: kde_ctrl_alt_r
+
+- name: Remove CtrlAltR shortcut conflict
+  kconfig:
+    file: ~/.config/kglobalshortcutsrc
+    groups: [plasmashell]
+    key: repeat_action
+    value: "none,{{ kde_ctrl_alt_r.value.split(',', 1)[1] }}"
+
+- name: Remove CtrlAltT shortcut conflict
+  kconfig:
+    file: ~/.config/kglobalshortcutsrc
+    groups: [org.kde.konsole.desktop]
+    key: _launch
+    value: none,Ctrl+Alt+T,Konsole
+
+- name: Update CtrlAltT to Ghostty
+  kconfig:
+    file: ~/.config/kglobalshortcutsrc
+    groups: [com.mitchellh.ghostty.desktop]
+    key: "{{ item.key }}"
+    value: "{{ item.value }}"
+  with_dict:
+    _k_friendly_name: Ghostty
+    _launch: Ctrl+Alt+T,Ctrl+Alt+T,Ghostty
+    new-window: none,none,New Window

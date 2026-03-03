@@ -7,6 +7,8 @@
 - name: Set chrome as default browser, part 1
   command: xdg-settings set default-web-browser google-chrome.desktop
   when: '"google-chrome" not in xdg_default_web_browser.stdout'
+  register: part1_result
+  failed_when: "part1_result.rc not in [0, 4]"  # /usr/bin/xdg-settings: 762: kwriteconfig: not found (but it worked)
 
 - name: Set chrome as default browser, part 2
   kconfig:
