@@ -1,0 +1,14 @@
+- name: Install pipx
+  pip:
+    name: pipx
+    break_system_packages: true
+
+- name: Install pipx Packages
+  community.general.pipx:
+    name: "{{ item }}"
+  with_items:
+    - ansible-lint
+    - asciinema
+    - cfn-lint
+    - howdoi
+    - black
