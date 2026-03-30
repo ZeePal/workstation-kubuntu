@@ -1,0 +1,115 @@
+- name: Create agentwrap folders
+  file:
+    state: directory
+    path: "{{ item }}"
+    owner: root
+    group: root
+    mode: u=rwx,go=rx
+  loop:
+    - /opt/agentwrap
+    - /opt/agentwrap/bin
+    - /etc/nftables.d
+    - /etc/systemd/resolved.conf.d
+
+- name: Install agentwrap config files
+  copy:
+    src: "{{ role_path }}/files/{{ item }}"
+    dest: "/{{ item }}"
+    owner: root
+    group: root
+    mode: u=rw,go=r
+  loop:
+    - opt/agentwrap/agentwrap.conf
+    - opt/agentwrap/resolv.conf
+    - etc/nftables.conf
+    - etc/nftables.d/agentwrap.nft
+    - etc/systemd/resolved.conf.d/agentwrap.conf
+  register: agentwrap_config_files
+
+- name: Install agentwrap helper binaries
+  copy:
+    src: "{{ role_path }}/files/{{ item }}"
+    dest: "/{{ item }}"
+    owner: root
+    group: root
+    mode: u=rwx,go=rx
+  loop:
+    - opt/agentwrap/bin/agentwrap-check
+    - opt/agentwrap/bin/agentwrap-test
+    - opt/agentwrap/bin/agentwrap-egress-init
+    - opt/agentwrap/bin/agentwrap-egress-reset
+  register: agentwrap_helper_binaries
+
+- name: Install agentwrap launch binaries
+  copy:
+    src: "{{ role_path }}/files/{{ item }}"
+    dest: "/{{ item }}"
+    owner: root
+    group: root
+    mode: u=rwx,go=rx
+  loop:
+    - usr/local/bin/agentwrap
+    - usr/local/bin/agentwrap-root
+    - usr/local/bin/agentwrap-unroot
+    - usr/local/bin/agentwrap-bwrap
+  register: agentwrap_launch_binaries
+
+- name: Install agentwrap sudoers policy
+  copy:
+    content: >-
+      {{
+        lookup('ansible.builtin.file', role_path ~ '/files/etc/sudoers.d/agentwrap')
+        | regex_replace('^USER ', USER ~ ' ', multiline=True)
+      }}
+    dest: /etc/sudoers.d/agentwrap
+    owner: root
+    group: root
+    mode: u=r,g=r,o=
+    validate: /usr/sbin/visudo -cf %s
+
+- name: Install agentwrap egress systemd unit
+  copy:
+    src: "{{ role_path }}/files/etc/systemd/system/agentwrap-egress.service"
+    dest: /etc/systemd/system/agentwrap-egress.service
+    owner: root
+    group: root
+    mode: u=rw,go=r
+  register: agentwrap_systemd_unit
+
+- name: Validate nftables configuration
+  command:
+    cmd: nft -c -f /etc/nftables.conf
+  changed_when: false
+  when: agentwrap_config_files.changed
+
+- name: Ensure nftables service is enabled
+  ansible.builtin.systemd_service:
+    name: nftables.service
+    enabled: true
+    state: started
+
+- name: Reload nftables service
+  ansible.builtin.systemd_service:
+    name: nftables.service
+    state: reloaded
+  when: agentwrap_config_files.changed
+
+- name: Ensure agentwrap egress service is enabled
+  ansible.builtin.systemd_service:
+    name: agentwrap-egress.service
+    enabled: true
+    state: started
+    daemon_reload: true
+
+- name: Reload agentwrap egress service
+  ansible.builtin.systemd_service:
+    name: agentwrap-egress.service
+    state: reloaded
+    daemon_reload: true
+  when: agentwrap_systemd_unit.changed or agentwrap_config_files.changed or agentwrap_helper_binaries.changed
+
+- name: Restart systemd-resolved service
+  ansible.builtin.systemd_service:
+    name: systemd-resolved.service
+    state: restarted
+  when: agentwrap_config_files.changed

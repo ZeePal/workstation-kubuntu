@@ -1,0 +1,5 @@
+Defaults!/usr/local/bin/agentwrap-root env_reset
+Defaults!/usr/local/bin/agentwrap-root env_keep += "AGENTWRAP_AWS_PROFILE AGENTWRAP_GCP_SA"
+Defaults!/usr/local/bin/agentwrap-root env_keep += "AGENTWRAP_PASS_*"
+
+USER ALL=(root) NOPASSWD: /usr/local/bin/agentwrap-root *

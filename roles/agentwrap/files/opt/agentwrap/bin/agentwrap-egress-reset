@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+if [[ ${EUID} -ne 0 ]]; then
+    echo "ERROR: agentwrap-egress-reset must run as root" >&2
+    exit 1
+fi
+
+export HOME="${HOME:-/root}" # make sure HOME is set to load config
+# shellcheck source=../agentwrap.conf.example
+source /opt/agentwrap/agentwrap.conf
+
+ip link del "$HOST_VETH_NAME" 2>/dev/null || true
+ip netns del "$NETNS_NAME" 2>/dev/null || true
+
+exec /opt/agentwrap/bin/agentwrap-egress-init

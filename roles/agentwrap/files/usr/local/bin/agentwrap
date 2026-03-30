@@ -1,0 +1,39 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+if [[ $# -eq 0 ]]; then
+    echo "ERROR: missing command to agentwrap" >&2
+    exit 1
+fi
+
+# shellcheck source=../../../opt/agentwrap/agentwrap.conf.example
+source /opt/agentwrap/agentwrap.conf
+
+if [[ -n ${AGENTWRAP_AWS_PROFILE:-} ]]; then
+    preserve_env+=(AGENTWRAP_AWS_PROFILE)
+fi
+
+if [[ -n ${AGENTWRAP_GCP_SA:-} ]]; then
+    preserve_env+=(AGENTWRAP_GCP_SA)
+fi
+
+for var in "${SUDO_WRAP_ENV_VARS[@]}"; do
+    if [[ -n "${!var+set}" ]]; then
+        export "AGENTWRAP_PASS_$var=${!var}"
+        preserve_env+=("AGENTWRAP_PASS_$var")
+    fi
+done
+
+for var in "${PASSTHROUGH_ENV_VARS[@]}"; do
+    if [[ -n "${!var+set}" ]]; then
+        export "AGENTWRAP_PASS_$var=${!var}"
+        preserve_env+=("AGENTWRAP_PASS_$var")
+    fi
+done
+
+preserve_env_csv="$({
+    IFS=,
+    printf '%s' "${preserve_env[*]}"
+})"
+
+exec sudo --preserve-env="$preserve_env_csv" /usr/local/bin/agentwrap-root "$@"

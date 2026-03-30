@@ -1,0 +1,120 @@
+table inet filter {
+    set agentwrap_allowed_uplinks { # REMINDER: duplicated for agentwrap-nat table at bottom of file
+        type ifname
+        elements = {
+            "wlp58s0",
+        }
+    }
+
+    set agentwrap_allowed_private_tcp_ipv4 {
+        type ipv4_addr . inet_service
+        flags interval
+        # elements = {
+        #     192.168.0.1 . 443,
+        #     192.168.0.0/24 . 80,
+        # }
+    }
+
+    set agentwrap_allowed_private_udp_ipv4 {
+        type ipv4_addr . inet_service
+        flags interval
+        # elements = {
+        #     192.168.0.1 . 53,
+        #     192.168.0.0/24 . 53,
+        # }
+    }
+
+    set agentwrap_allowed_host_tcp_ports {
+        type inet_service
+        elements = {
+            53,
+        }
+    }
+
+    set agentwrap_allowed_host_udp_ports {
+        type inet_service
+        elements = {
+            53,
+        }
+    }
+
+    set agentwrap_blocked_ipv4 {
+        type ipv4_addr
+        flags interval
+        elements = {
+            0.0.0.0/8,        # RFC 1122 "this network"
+            10.0.0.0/8,       # RFC 1918 private-use
+            100.64.0.0/10,    # RFC 6598 carrier-grade NAT / shared address space
+            127.0.0.0/8,      # RFC 1122 loopback
+            169.254.0.0/16,   # RFC 3927 link-local
+            172.16.0.0/12,    # RFC 1918 private-use
+            192.0.2.0/24,     # RFC 5737 TEST-NET-1 documentation
+            192.168.0.0/16,   # RFC 1918 private-use
+            198.18.0.0/15,    # RFC 2544 benchmarking
+            198.51.100.0/24,  # RFC 5737 TEST-NET-2 documentation
+            203.0.113.0/24,   # RFC 5737 TEST-NET-3 documentation
+            224.0.0.0/4,      # RFC 5771 multicast
+            240.0.0.0/4,      # RFC 1112 reserved / future use
+        }
+    }
+
+    set agentwrap_blocked_ipv6 {
+        type ipv6_addr
+        flags interval
+        elements = {
+            ::/128,             # RFC 4291 unspecified
+            ::1/128,            # RFC 4291 loopback
+            ::ffff:0.0.0.0/96,  # RFC 4291 IPv4-mapped
+            100::/64,           # RFC 6666 discard-only
+            2001:2::/48,        # RFC 5180 benchmarking
+            2001:db8::/32,      # RFC 3849 documentation
+            2001:10::/28,       # RFC 4843 ORCHID (deprecated special-use)
+            fc00::/7,           # RFC 4193 unique local addresses
+            fe80::/10,          # RFC 4291 link-local unicast
+            ff00::/8,           # RFC 4291 multicast
+        }
+    }
+
+    chain input {
+        iifname "awhost0" jump agentwrap_input comment "agentwrap host-input guard"
+    }
+
+    chain forward {
+        iifname "awhost0" jump agentwrap_forward comment "agentwrap egress guard"
+        oifname "awhost0" jump agentwrap_forward comment "agentwrap return guard"
+    }
+
+    chain agentwrap_input {
+        meta l4proto tcp tcp dport @agentwrap_allowed_host_tcp_ports counter accept
+        meta l4proto udp udp dport @agentwrap_allowed_host_udp_ports counter accept
+        ip daddr @agentwrap_blocked_ipv4 counter drop
+        ip6 daddr @agentwrap_blocked_ipv6 counter drop
+        counter drop
+    }
+
+    chain agentwrap_forward {
+        ct state established,related counter accept
+        iifname "awhost0" meta l4proto tcp ip daddr . tcp dport @agentwrap_allowed_private_tcp_ipv4 counter accept
+        iifname "awhost0" meta l4proto udp ip daddr . udp dport @agentwrap_allowed_private_udp_ipv4 counter accept
+        iifname "awhost0" ip daddr @agentwrap_blocked_ipv4 counter drop
+        iifname "awhost0" ip6 daddr @agentwrap_blocked_ipv6 counter drop
+        iifname "awhost0" oifname @agentwrap_allowed_uplinks counter accept
+        oifname "awhost0" counter drop
+        iifname "awhost0" counter drop
+    }
+}
+
+table ip agentwrap_nat {
+    set agentwrap_allowed_uplinks {
+        type ifname
+        elements = {
+            "wlp58s0",
+        }
+    }
+
+    chain postrouting {
+        type nat hook postrouting priority srcnat; policy accept;
+
+        iifname "awhost0" oifname @agentwrap_allowed_uplinks counter masquerade
+    }
+}

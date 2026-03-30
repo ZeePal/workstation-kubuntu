@@ -1,0 +1,116 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# shellcheck source=../agentwrap.conf.example
+source /opt/agentwrap/agentwrap.conf
+
+private_target="${1:-}"
+private_host=""
+private_port=""
+tcp_timeout_seconds="${AGENTWRAP_TEST_TCP_TIMEOUT:-2}"
+
+if [[ -n "$private_target" ]]; then
+    if [[ ! "$private_target" =~ ^[^[:space:]:]+:[0-9]+$ ]]; then
+        echo "ERROR: private target must be HOST:PORT" >&2
+        exit 1
+    fi
+    private_host="${private_target%%:*}"
+    private_port="${private_target##*:}"
+fi
+
+test_root="${TMPDIR:-/tmp}/agentwrap-test-$$"
+hidden_host_path="$test_root/hidden.txt"
+rw_dir="${EXTRA_RW_DIRS[0]}"
+ro_dir="${EXTRA_RO_DIRS[0]}"
+workspace_rw_file="$PWD/.agentwrap-test-rw-$$"
+extra_rw_file="$rw_dir/.agentwrap-test-rw-$$"
+extra_ro_file="$ro_dir/.agentwrap-test-ro-$$"
+
+cleanup() {
+    rm -f "$workspace_rw_file" "$extra_rw_file" "$extra_ro_file"
+    rm -rf "$test_root"
+}
+trap cleanup EXIT
+
+mkdir -p "$test_root" "$rw_dir" "$ro_dir"
+printf 'hidden\n' >"$hidden_host_path"
+rm -f "$workspace_rw_file" "$extra_rw_file" "$extra_ro_file"
+
+if [[ -t 1 ]]; then
+    color_pass=$'\033[32m'
+    color_fail=$'\033[31m'
+    color_skip=$'\033[33m'
+    color_reset=$'\033[0m'
+else
+    color_pass=''
+    color_fail=''
+    color_skip=''
+    color_reset=''
+fi
+
+run_suite() {
+    local runner="$1"
+    local label
+    label="$(basename "$runner")"
+
+    run_tcp_check() {
+        local host="$1"
+        local port="$2"
+        timeout "$tcp_timeout_seconds" "$runner" bash -lc "exec 3<>/dev/tcp/$host/$port; exec 3>&-"
+    }
+
+    run_check() {
+        local name="$1"
+        shift
+        if "$@"; then
+            printf '[%s] %sPASS%s %s\n' "$label" "$color_pass" "$color_reset" "$name"
+        else
+            printf '[%s] %sFAIL%s %s\n' "$label" "$color_fail" "$color_reset" "$name" >&2
+            return 1
+        fi
+    }
+
+    run_skip() {
+        local name="$1"
+        printf '[%s] %sSKIP%s %s\n' "$label" "$color_skip" "$color_reset" "$name"
+    }
+
+    run_check 'internet IPv4 TCP reachability' run_tcp_check 1.1.1.1 443
+    run_check 'internet DNS TCP reachability' run_tcp_check google.com 443
+    run_check 'hidden host path is not visible' "$runner" bash -lc '[ ! -e "$1" ]' _ "$hidden_host_path"
+
+    run_check 'workspace bind accepts writes' "$runner" bash -lc 'printf ok > "$1"' _ "$workspace_rw_file"
+    run_check 'workspace bind write is visible on host' test -f "$workspace_rw_file"
+    rm -f "$workspace_rw_file"
+
+    run_check 'configured extra RW path accepts writes' "$runner" bash -lc 'printf ok > "$1"' _ "$extra_rw_file"
+    run_check 'configured extra RW write is visible on host' test -f "$extra_rw_file"
+    rm -f "$extra_rw_file"
+
+    if "$runner" bash -lc 'printf no > "$1"' _ "$extra_ro_file" >/dev/null 2>&1; then
+        printf '[%s] %sFAIL%s configured extra RO path unexpectedly writable\n' "$label" "$color_fail" "$color_reset" >&2
+        return 1
+    fi
+    run_check 'configured extra RO path blocks writes' test ! -e "$extra_ro_file"
+
+    if [[ -z "$private_host" ]]; then
+        run_skip 'private TCP target checks (provide HOST:PORT to enable)'
+    elif [[ "$label" == "agentwrap" ]]; then
+        if run_tcp_check "$private_host" "$private_port" >/dev/null 2>&1; then
+            printf '[%s] %sFAIL%s private TCP target unexpectedly reachable\n' "$label" "$color_fail" "$color_reset" >&2
+            return 1
+        fi
+        printf '[%s] %sPASS%s private TCP target is blocked by network isolation\n' "$label" "$color_pass" "$color_reset"
+    else
+        run_check 'private TCP target is reachable without network isolation' run_tcp_check "$private_host" "$private_port"
+    fi
+}
+
+run_suite agentwrap &
+pid_agentwrap=$!
+
+run_suite agentwrap-bwrap &
+pid_bwrap=$!
+
+wait "$pid_agentwrap"
+wait "$pid_bwrap"

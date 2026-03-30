@@ -1,0 +1,13 @@
+[Unit]
+Description=Initialize shared agentwrap egress namespace
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/opt/agentwrap/bin/agentwrap-egress-init
+ExecReload=/opt/agentwrap/bin/agentwrap-egress-reset
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target

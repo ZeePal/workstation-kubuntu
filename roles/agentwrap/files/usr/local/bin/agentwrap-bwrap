@@ -1,0 +1,128 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+if [[ $# -eq 0 ]]; then
+    echo "ERROR: missing command to agentwrap-bwrap" >&2
+    exit 1
+fi
+
+# shellcheck source=../../../opt/agentwrap/agentwrap.conf.example
+source /opt/agentwrap/agentwrap.conf
+
+allowed_env_names=("${PASSTHROUGH_ENV_VARS[@]}")
+
+# if AWS creds have been requested, grab and passthrough
+if [[ -n ${AGENTWRAP_AWS_PROFILE:-} ]]; then
+    # "true" is to defer the profile lookup to the normal profile env var
+    aws_profile_to_export=""
+    if [[ "$AGENTWRAP_AWS_PROFILE" == "true" ]]; then
+        aws_profile_to_export="${AWS_PROFILE:-}"
+    else
+        aws_profile_to_export="$AGENTWRAP_AWS_PROFILE"
+    fi
+
+    if [[ -n "$aws_profile_to_export" ]]; then
+        while IFS= read -r line; do
+            if [[ "$line" != *=* ]]; then
+                continue
+            fi
+
+            key="${line%%=*}"
+            value="${line#*=}"
+            case "$key" in
+            AWS_ACCESS_KEY_ID | AWS_SECRET_ACCESS_KEY | AWS_SESSION_TOKEN | AWS_CREDENTIAL_EXPIRATION)
+                if [[ "$value" == \"*\" && "$value" == *\" ]]; then
+                    value="${value:1:-1}"
+                elif [[ "$value" == \'*\' && "$value" == *\' ]]; then
+                    value="${value:1:-1}"
+                fi
+                export "$key=$value"
+                allowed_env_names+=("$key")
+                ;;
+            esac
+        done < <(aws configure export-credentials --profile "$aws_profile_to_export" --format env-no-export)
+    fi
+fi
+
+# if GCP creds have been requested, impersonate and passthrough
+if [[ -n ${AGENTWRAP_GCP_SA:-} ]]; then
+    gcp_token="$(gcloud auth print-access-token --impersonate-service-account="$AGENTWRAP_GCP_SA")"
+    export GOOGLE_OAUTH_ACCESS_TOKEN="$gcp_token"
+    export CLOUDSDK_AUTH_ACCESS_TOKEN="$gcp_token"
+    allowed_env_names+=(GOOGLE_OAUTH_ACCESS_TOKEN CLOUDSDK_AUTH_ACCESS_TOKEN)
+fi
+
+# Find where the writable directory should start (PWD or the root of the Git repo)
+workspace="$(git -C "${PWD:-.}" rev-parse --show-toplevel 2>/dev/null || true)"
+if [[ -z "$workspace" ]]; then
+    workspace="$PWD"
+fi
+
+resolv_conf_source="/etc/resolv.conf"
+if [[ ${AGENTWRAP_IN_NETNS:-0} == 1 ]]; then
+    if [[ -f /opt/agentwrap/resolv.conf ]]; then
+        resolv_conf_source="/opt/agentwrap/resolv.conf"
+    fi
+fi
+
+binds_extra_ro=()
+for dir in "${EXTRA_RO_DIRS[@]}"; do
+    if [[ -d "$dir" ]]; then
+        binds_extra_ro+=(--ro-bind-try "$dir" "$dir")
+    fi
+done
+
+binds_extra_rw=()
+for dir in "${EXTRA_RW_DIRS[@]}"; do
+    if [[ -d "$dir" ]]; then
+        binds_extra_rw+=(--bind-try "$dir" "$dir")
+    fi
+done
+
+bwrap_args=(
+    --unshare-all
+    --share-net
+    --die-with-parent
+    --new-session
+    --ro-bind /usr /usr
+    --ro-bind /lib /lib
+    --ro-bind /lib64 /lib64
+    --ro-bind /bin /bin
+    --ro-bind /sbin /sbin
+    --proc /proc
+    --dev /dev
+    --tmpfs /tmp
+    --tmpfs /run
+    --ro-bind "$resolv_conf_source" /etc/resolv.conf
+    --ro-bind /etc/hosts /etc/hosts
+    --ro-bind /etc/nsswitch.conf /etc/nsswitch.conf
+    --ro-bind /etc/passwd /etc/passwd
+    --ro-bind /etc/group /etc/group
+    --ro-bind /etc/localtime /etc/localtime
+    --ro-bind /etc/alternatives /etc/alternatives
+    --ro-bind-try /etc/ssl /etc/ssl
+    --ro-bind-try /etc/ca-certificates /etc/ca-certificates
+    --dir "$HOME"
+    --chdir "$PWD"
+    --setenv PATH "$AGENTWRAP_PATH"
+)
+
+bwrap_args+=("${binds_extra_ro[@]}")
+bwrap_args+=("${binds_extra_rw[@]}")
+bwrap_args+=(--bind "$workspace" "$workspace")
+
+# Strip/unset all envvars not to be passed through to the sandbox
+for current_var in $(compgen -e); do
+    keep_var="0"
+    for allowed_var in "${allowed_env_names[@]}"; do
+        if [[ "$current_var" == "$allowed_var" ]]; then
+            keep_var="1"
+            break
+        fi
+    done
+    if [[ "$keep_var" == "0" ]]; then
+        unset "$current_var"
+    fi
+done
+
+exec /usr/bin/bwrap "${bwrap_args[@]}" -- "$@"

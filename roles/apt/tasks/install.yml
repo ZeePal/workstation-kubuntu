@@ -103,6 +103,8 @@
       - stow
       - wifi-qr
       - bubblewrap
+      - nftables
+      - hyperfine
 
       # KDE Notification Language Support
       - gimp-help-en

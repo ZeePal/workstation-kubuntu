@@ -1,0 +1,32 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# shellcheck source=../agentwrap.conf.example
+source /opt/agentwrap/agentwrap.conf
+
+NETNS_NAME="${NETNS_NAME:-agentwrap-egress}"
+NETNS_PATH="${NETNS_PATH:-/run/netns/agentwrap-egress}"
+HOST_VETH_NAME="${HOST_VETH_NAME:-awhost0}"
+NS_VETH_NAME="${NS_VETH_NAME:-awns0}"
+
+if [[ ${EUID} -ne 0 ]]; then
+    echo "ERROR: agentwrap-check must run as root" >&2
+    exit 1
+fi
+
+echo "[1/5] namespace path"
+test -e "$NETNS_PATH"
+ip netns list | grep -E "^${NETNS_NAME}( |$)"
+
+echo "[2/5] host interface"
+ip addr show dev "$HOST_VETH_NAME"
+
+echo "[3/5] namespace interface"
+ip -n "$NETNS_NAME" addr show dev "$NS_VETH_NAME"
+
+echo "[4/5] namespace default route"
+ip -n "$NETNS_NAME" route show default
+
+echo "[5/5] nftables tables"
+nft list table inet filter
+nft list table ip agentwrap_nat
