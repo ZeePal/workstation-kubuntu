@@ -6,3 +6,4 @@
     global: true
   with_items:
     - opencode-ai
+    - '@openai/codex'
