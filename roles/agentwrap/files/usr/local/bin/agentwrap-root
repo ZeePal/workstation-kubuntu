@@ -16,6 +16,8 @@ if [[ $# -eq 0 ]]; then
     exit 1
 fi
 
+# Enter the shared egress namespace as root, then immediately drop back to the
+# calling user before any user-controlled command is executed.
 exec /usr/sbin/ip netns exec agentwrap-egress \
     /usr/bin/setpriv --reuid "$SUDO_UID" --regid "$SUDO_GID" --init-groups --no-new-privs \
     /usr/local/bin/agentwrap-unroot "$@"

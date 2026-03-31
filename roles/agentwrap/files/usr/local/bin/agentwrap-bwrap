@@ -6,7 +6,7 @@ if [[ $# -eq 0 ]]; then
     exit 1
 fi
 
-# shellcheck source=../../../opt/agentwrap/agentwrap.conf.example
+# shellcheck source=../../../opt/agentwrap/agentwrap.conf
 source /opt/agentwrap/agentwrap.conf
 
 allowed_env_names=("${PASSTHROUGH_ENV_VARS[@]}")
@@ -102,6 +102,8 @@ bwrap_args=(
 
 bwrap_args+=("${binds_extra_ro[@]}")
 bwrap_args+=("${binds_extra_rw[@]}")
+# Keep the active workspace writable while the rest of the filesystem stays
+# read-only or synthetic unless explicitly bound above.
 bwrap_args+=(--bind "$workspace" "$workspace")
 
 # Strip/unset all envvars not to be passed through to the sandbox

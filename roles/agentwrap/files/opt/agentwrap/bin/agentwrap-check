@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# shellcheck source=../agentwrap.conf.example
+# shellcheck source=../agentwrap.conf
 source /opt/agentwrap/agentwrap.conf
 
 NETNS_NAME="${NETNS_NAME:-agentwrap-egress}"

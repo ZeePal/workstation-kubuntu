@@ -7,7 +7,7 @@ if [[ ${EUID} -ne 0 ]]; then
 fi
 
 export HOME="${HOME:-/root}" # make sure HOME is set to load config
-# shellcheck source=../agentwrap.conf.example
+# shellcheck source=../agentwrap.conf
 source /opt/agentwrap/agentwrap.conf
 
 ip link del "$HOST_VETH_NAME" 2>/dev/null || true

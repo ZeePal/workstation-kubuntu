@@ -98,6 +98,7 @@ table inet filter {
         iifname "awhost0" meta l4proto udp ip daddr . udp dport @agentwrap_allowed_private_udp_ipv4 counter accept
         iifname "awhost0" ip daddr @agentwrap_blocked_ipv4 counter drop
         iifname "awhost0" ip6 daddr @agentwrap_blocked_ipv6 counter drop
+        # Sandboxed traffic may leave only through explicitly approved uplinks.
         iifname "awhost0" oifname @agentwrap_allowed_uplinks counter accept
         oifname "awhost0" counter drop
         iifname "awhost0" counter drop

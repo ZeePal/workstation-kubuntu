@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# shellcheck source=../agentwrap.conf.example
+# shellcheck disable=SC1091 # Config file exists only on installed target path.
+# shellcheck source=../agentwrap/agentwrap.conf
 source /opt/agentwrap/agentwrap.conf
 
 private_url="${1:-}"
@@ -26,6 +27,7 @@ workspace_rw_file="$PWD/.agentwrap-test-rw-$$"
 extra_rw_file="$rw_dir/.agentwrap-test-rw-$$"
 extra_ro_file="$ro_dir/.agentwrap-test-ro-$$"
 
+# shellcheck disable=SC2317,SC2329 # Invoked by trap on script exit.
 cleanup() {
     rm -f "$workspace_rw_file" "$extra_rw_file" "$extra_ro_file"
     rm -rf "$test_root"
@@ -48,97 +50,132 @@ else
     color_reset=''
 fi
 
+# shellcheck disable=SC2317 # Indirectly invoked via run_check in parallel suites.
+print_pass() {
+    local label="$1"
+    local name="$2"
+    printf '[%s] %sPASS%s %s\n' "$label" "$color_pass" "$color_reset" "$name"
+}
+
+# shellcheck disable=SC2317 # Indirectly invoked via run_check in parallel suites.
+print_fail() {
+    local label="$1"
+    local name="$2"
+    printf '[%s] %sFAIL%s %s\n' "$label" "$color_fail" "$color_reset" "$name" >&2
+}
+
+# shellcheck disable=SC2317 # Used conditionally for optional test cases.
+print_skip() {
+    local label="$1"
+    local name="$2"
+    printf '[%s] %sSKIP%s %s\n' "$label" "$color_skip" "$color_reset" "$name"
+}
+
+# shellcheck disable=SC2317,SC2329 # Indirectly invoked through expect_* helpers.
+run_curl() {
+    local runner="$1"
+    shift
+    "$runner" curl \
+        --insecure \
+        --silent \
+        --show-error \
+        --output /dev/null \
+        --write-out '%{http_code}' \
+        --connect-timeout "$curl_timeout_seconds" \
+        --max-time "$curl_timeout_seconds" \
+        "$@"
+}
+
+# shellcheck disable=SC2317,SC2329 # Passed by name into run_check.
+expect_connect() {
+    local runner="$1"
+    local url="$2"
+    local code
+    code="$(run_curl "$runner" "$url")"
+    [[ -n "$code" && "$code" != "000" ]]
+}
+
+# shellcheck disable=SC2317,SC2329 # Passed by name into run_check.
+expect_connect_resolved() {
+    local runner="$1"
+    local host="$2"
+    local ip="$3"
+    local code
+    code="$(run_curl "$runner" --resolve "$host:443:$ip" "https://$host")"
+    [[ -n "$code" && "$code" != "000" ]]
+}
+
+# shellcheck disable=SC2317,SC2329 # Passed by name into run_check.
+expect_block() {
+    local runner="$1"
+    local url="$2"
+    if run_curl "$runner" "$url" >/dev/null 2>&1; then
+        return 1
+    fi
+    return 0
+}
+
+# shellcheck disable=SC2317 # Called before definition and within backgrounded suites.
+run_check() {
+    local label="$1"
+    local name="$2"
+    shift 2
+    if "$@"; then
+        print_pass "$label" "$name"
+        return 0
+    fi
+    print_fail "$label" "$name"
+    return 1
+}
+
+# shellcheck disable=SC2317 # Invoked in background jobs below.
 run_suite() {
     local runner="$1"
     local label
     local failures=0
     label="$(basename "$runner")"
 
-    run_check() {
-        local name="$1"
-        shift
-        if "$@"; then
-            printf '[%s] %sPASS%s %s\n' "$label" "$color_pass" "$color_reset" "$name"
-        else
-            printf '[%s] %sFAIL%s %s\n' "$label" "$color_fail" "$color_reset" "$name" >&2
-            failures=1
-        fi
-    }
-
-    run_skip() {
-        local name="$1"
-        printf '[%s] %sSKIP%s %s\n' "$label" "$color_skip" "$color_reset" "$name"
-    }
-
-    run_curl_expect_connect() {
-        local url="$1"
-        local code
-        local -a curl_cmd=(
-            "$runner"
-            curl
-            -k
-            --silent
-            --show-error
-            --output /dev/null
-            --write-out '%{http_code}'
-            --connect-timeout "$curl_timeout_seconds"
-            --max-time "$curl_timeout_seconds"
-            "$url"
-        )
-        code="$("${curl_cmd[@]}")"
-        [[ -n "$code" && "$code" != "000" ]]
-    }
-
-    run_curl_expect_block() {
-        local url="$1"
-        local -a curl_cmd=(
-            "$runner"
-            curl
-            -k
-            --silent
-            --show-error
-            --output /dev/null
-            --write-out '%{http_code}'
-            --connect-timeout "$curl_timeout_seconds"
-            --max-time "$curl_timeout_seconds"
-            "$url"
-        )
-        if "${curl_cmd[@]}" >/dev/null 2>&1; then
-            return 1
-        fi
-        return 0
-    }
-
     if [[ -n "$google_ipv4" ]]; then
-        run_check 'internet IPv4 HTTPS reachability via resolved google.com address' run_curl_expect_connect "https://$google_ipv4"
+        run_check "$label" 'internet HTTPS reachability without sandbox DNS using --resolve' \
+            expect_connect_resolved "$runner" google.com "$google_ipv4" || failures=1
     else
-        run_skip 'internet IPv4 HTTPS reachability via resolved google.com address'
+        print_skip "$label" 'internet HTTPS reachability without sandbox DNS using --resolve'
     fi
 
-    run_check 'internet DNS HTTPS reachability for google.com' run_curl_expect_connect https://google.com
-    run_check 'hidden host path is not visible' "$runner" bash -lc '[ ! -e "$1" ]' _ "$hidden_host_path"
+    run_check "$label" 'internet DNS HTTPS reachability for google.com' \
+        expect_connect "$runner" https://google.com || failures=1
 
-    run_check 'workspace bind accepts writes' "$runner" bash -lc 'printf ok > "$1"' _ "$workspace_rw_file"
-    run_check 'workspace bind write is visible on host' test -f "$workspace_rw_file"
+    run_check "$label" 'hidden host path is not visible' \
+        "$runner" bash -lc "[ ! -e \"\$1\" ]" _ "$hidden_host_path" || failures=1
+
+    run_check "$label" 'workspace bind accepts writes' \
+        "$runner" bash -lc "printf ok > \"\$1\"" _ "$workspace_rw_file" || failures=1
+    run_check "$label" 'workspace bind write is visible on host' \
+        test -f "$workspace_rw_file" || failures=1
     rm -f "$workspace_rw_file"
 
-    run_check 'configured extra RW path accepts writes' "$runner" bash -lc 'printf ok > "$1"' _ "$extra_rw_file"
-    run_check 'configured extra RW write is visible on host' test -f "$extra_rw_file"
+    run_check "$label" 'configured extra RW path accepts writes' \
+        "$runner" bash -lc "printf ok > \"\$1\"" _ "$extra_rw_file" || failures=1
+    run_check "$label" 'configured extra RW write is visible on host' \
+        test -f "$extra_rw_file" || failures=1
     rm -f "$extra_rw_file"
 
-    if "$runner" bash -lc 'printf no > "$1"' _ "$extra_ro_file" >/dev/null 2>&1; then
-        printf '[%s] %sFAIL%s configured extra RO path unexpectedly writable\n' "$label" "$color_fail" "$color_reset" >&2
+    if "$runner" bash -lc "printf no > \"\$1\"" _ "$extra_ro_file" >/dev/null 2>&1; then
+        print_fail "$label" 'configured extra RO path unexpectedly writable'
         failures=1
     else
-        run_check 'configured extra RO path blocks writes' test ! -e "$extra_ro_file"
+        run_check "$label" 'configured extra RO path blocks writes' \
+            test ! -e "$extra_ro_file" || failures=1
     fi
 
     if [[ -z "$private_url" ]]; then
-        run_skip 'private URL checks (provide http://... or https://... to enable)'
+        print_skip "$label" 'private URL checks (provide http://... or https://... to enable)'
     elif [[ "$label" == "agentwrap" ]]; then
-        run_check 'private URL is blocked by network isolation' run_curl_expect_block "$private_url"
+        run_check "$label" 'private URL is blocked by network isolation' \
+            expect_block "$runner" "$private_url" || failures=1
     else
-        run_check 'private URL is reachable without network isolation' run_curl_expect_connect "$private_url"
+        run_check "$label" 'private URL is reachable without network isolation' \
+            expect_connect "$runner" "$private_url" || failures=1
     fi
 
     return "$failures"

@@ -7,7 +7,7 @@ if [[ ${EUID} -ne 0 ]]; then
 fi
 
 export HOME="${HOME:-/root}" # make sure HOME is set to load config
-# shellcheck source=../agentwrap.conf.example
+# shellcheck source=../agentwrap.conf
 source /opt/agentwrap/agentwrap.conf
 
 mkdir -p /run/netns
@@ -21,6 +21,8 @@ if ! ip link show "$HOST_VETH_NAME" >/dev/null 2>&1; then
     ip link set "$NS_VETH_NAME" netns "$NETNS_NAME"
 fi
 
+# The host-side veth becomes the namespace's only routed path to the outside
+# world, which lets nftables enforce egress policy at a single choke point.
 ip addr replace "$HOST_VETH_ADDR_CIDR" dev "$HOST_VETH_NAME"
 ip link set "$HOST_VETH_NAME" up
 
@@ -34,6 +36,8 @@ ip -n "$NETNS_NAME" link set lo up
 ip -n "$NETNS_NAME" link set "$NS_VETH_NAME" up
 ip -n "$NETNS_NAME" route replace default via "$NS_GATEWAY_ADDR"
 
+# Disable IPv6 inside the namespace so only the reviewed IPv4 nftables path is
+# available for sandbox egress.
 sysctl -q -w net.ipv4.ip_forward=1
 sysctl -q -w net.ipv6.conf.all.forwarding=0
 ip netns exec "$NETNS_NAME" sysctl -q -w net.ipv6.conf.all.disable_ipv6=1

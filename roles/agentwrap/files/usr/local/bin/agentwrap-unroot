@@ -6,7 +6,7 @@ if [[ $# -eq 0 ]]; then
     exit 1
 fi
 
-# shellcheck source=../../../opt/agentwrap/agentwrap.conf.example
+# shellcheck source=../../../opt/agentwrap/agentwrap.conf
 source /opt/agentwrap/agentwrap.conf
 
 for var in "${SUDO_WRAP_ENV_VARS[@]}"; do

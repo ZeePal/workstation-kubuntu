@@ -6,7 +6,7 @@ if [[ $# -eq 0 ]]; then
     exit 1
 fi
 
-# shellcheck source=../../../opt/agentwrap/agentwrap.conf.example
+# shellcheck source=../../../opt/agentwrap/agentwrap.conf
 source /opt/agentwrap/agentwrap.conf
 
 if [[ -n ${AGENTWRAP_AWS_PROFILE:-} ]]; then
