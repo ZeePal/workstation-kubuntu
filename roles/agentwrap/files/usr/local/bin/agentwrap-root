@@ -16,6 +16,6 @@ if [[ $# -eq 0 ]]; then
     exit 1
 fi
 
-exec /usr/bin/nsenter --net=/run/netns/agentwrap-egress -- \
+exec /usr/sbin/ip netns exec agentwrap-egress \
     /usr/bin/setpriv --reuid "$SUDO_UID" --regid "$SUDO_GID" --init-groups --no-new-privs \
     /usr/local/bin/agentwrap-unroot "$@"

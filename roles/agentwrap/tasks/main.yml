@@ -10,6 +10,7 @@
     - /opt/agentwrap/bin
     - /etc/nftables.d
     - /etc/systemd/resolved.conf.d
+    - /etc/netns/agentwrap-egress
 
 - name: Install agentwrap config files
   copy:
@@ -20,10 +21,10 @@
     mode: u=rw,go=r
   loop:
     - opt/agentwrap/agentwrap.conf
-    - opt/agentwrap/resolv.conf
     - etc/nftables.conf
     - etc/nftables.d/agentwrap.nft
     - etc/systemd/resolved.conf.d/agentwrap.conf
+    - etc/netns/agentwrap-egress/resolv.conf
   register: agentwrap_config_files
 
 - name: Install agentwrap helper binaries

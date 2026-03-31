@@ -4,19 +4,19 @@ set -euo pipefail
 # shellcheck source=../agentwrap.conf.example
 source /opt/agentwrap/agentwrap.conf
 
-private_target="${1:-}"
-private_host=""
-private_port=""
-tcp_timeout_seconds="${AGENTWRAP_TEST_TCP_TIMEOUT:-2}"
+private_url="${1:-}"
+curl_timeout_seconds="${AGENTWRAP_TEST_CURL_TIMEOUT:-2}"
+google_ipv4=""
 
-if [[ -n "$private_target" ]]; then
-    if [[ ! "$private_target" =~ ^[^[:space:]:]+:[0-9]+$ ]]; then
-        echo "ERROR: private target must be HOST:PORT" >&2
-        exit 1
-    fi
-    private_host="${private_target%%:*}"
-    private_port="${private_target##*:}"
+if [[ -n "$private_url" && ! "$private_url" =~ ^https?:// ]]; then
+    echo "ERROR: private target must be http://... or https://..." >&2
+    exit 1
 fi
+
+while read -r ip _; do
+    google_ipv4="$ip"
+    break
+done < <(getent ahostsv4 google.com)
 
 test_root="${TMPDIR:-/tmp}/agentwrap-test-$$"
 hidden_host_path="$test_root/hidden.txt"
@@ -51,13 +51,8 @@ fi
 run_suite() {
     local runner="$1"
     local label
+    local failures=0
     label="$(basename "$runner")"
-
-    run_tcp_check() {
-        local host="$1"
-        local port="$2"
-        timeout "$tcp_timeout_seconds" "$runner" bash -lc "exec 3<>/dev/tcp/$host/$port; exec 3>&-"
-    }
 
     run_check() {
         local name="$1"
@@ -66,7 +61,7 @@ run_suite() {
             printf '[%s] %sPASS%s %s\n' "$label" "$color_pass" "$color_reset" "$name"
         else
             printf '[%s] %sFAIL%s %s\n' "$label" "$color_fail" "$color_reset" "$name" >&2
-            return 1
+            failures=1
         fi
     }
 
@@ -75,8 +70,52 @@ run_suite() {
         printf '[%s] %sSKIP%s %s\n' "$label" "$color_skip" "$color_reset" "$name"
     }
 
-    run_check 'internet IPv4 TCP reachability' run_tcp_check 1.1.1.1 443
-    run_check 'internet DNS TCP reachability' run_tcp_check google.com 443
+    run_curl_expect_connect() {
+        local url="$1"
+        local code
+        local -a curl_cmd=(
+            "$runner"
+            curl
+            -k
+            --silent
+            --show-error
+            --output /dev/null
+            --write-out '%{http_code}'
+            --connect-timeout "$curl_timeout_seconds"
+            --max-time "$curl_timeout_seconds"
+            "$url"
+        )
+        code="$("${curl_cmd[@]}")"
+        [[ -n "$code" && "$code" != "000" ]]
+    }
+
+    run_curl_expect_block() {
+        local url="$1"
+        local -a curl_cmd=(
+            "$runner"
+            curl
+            -k
+            --silent
+            --show-error
+            --output /dev/null
+            --write-out '%{http_code}'
+            --connect-timeout "$curl_timeout_seconds"
+            --max-time "$curl_timeout_seconds"
+            "$url"
+        )
+        if "${curl_cmd[@]}" >/dev/null 2>&1; then
+            return 1
+        fi
+        return 0
+    }
+
+    if [[ -n "$google_ipv4" ]]; then
+        run_check 'internet IPv4 HTTPS reachability via resolved google.com address' run_curl_expect_connect "https://$google_ipv4"
+    else
+        run_skip 'internet IPv4 HTTPS reachability via resolved google.com address'
+    fi
+
+    run_check 'internet DNS HTTPS reachability for google.com' run_curl_expect_connect https://google.com
     run_check 'hidden host path is not visible' "$runner" bash -lc '[ ! -e "$1" ]' _ "$hidden_host_path"
 
     run_check 'workspace bind accepts writes' "$runner" bash -lc 'printf ok > "$1"' _ "$workspace_rw_file"
@@ -89,21 +128,20 @@ run_suite() {
 
     if "$runner" bash -lc 'printf no > "$1"' _ "$extra_ro_file" >/dev/null 2>&1; then
         printf '[%s] %sFAIL%s configured extra RO path unexpectedly writable\n' "$label" "$color_fail" "$color_reset" >&2
-        return 1
-    fi
-    run_check 'configured extra RO path blocks writes' test ! -e "$extra_ro_file"
-
-    if [[ -z "$private_host" ]]; then
-        run_skip 'private TCP target checks (provide HOST:PORT to enable)'
-    elif [[ "$label" == "agentwrap" ]]; then
-        if run_tcp_check "$private_host" "$private_port" >/dev/null 2>&1; then
-            printf '[%s] %sFAIL%s private TCP target unexpectedly reachable\n' "$label" "$color_fail" "$color_reset" >&2
-            return 1
-        fi
-        printf '[%s] %sPASS%s private TCP target is blocked by network isolation\n' "$label" "$color_pass" "$color_reset"
+        failures=1
     else
-        run_check 'private TCP target is reachable without network isolation' run_tcp_check "$private_host" "$private_port"
+        run_check 'configured extra RO path blocks writes' test ! -e "$extra_ro_file"
     fi
+
+    if [[ -z "$private_url" ]]; then
+        run_skip 'private URL checks (provide http://... or https://... to enable)'
+    elif [[ "$label" == "agentwrap" ]]; then
+        run_check 'private URL is blocked by network isolation' run_curl_expect_block "$private_url"
+    else
+        run_check 'private URL is reachable without network isolation' run_curl_expect_connect "$private_url"
+    fi
+
+    return "$failures"
 }
 
 run_suite agentwrap &
@@ -112,5 +150,8 @@ pid_agentwrap=$!
 run_suite agentwrap-bwrap &
 pid_bwrap=$!
 
-wait "$pid_agentwrap"
-wait "$pid_bwrap"
+status=0
+wait "$pid_agentwrap" || status=1
+wait "$pid_bwrap" || status=1
+
+exit "$status"
