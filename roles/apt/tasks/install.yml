@@ -105,6 +105,7 @@
       - bubblewrap
       - nftables
       - hyperfine
+      - libseccomp-dev
 
       # KDE Notification Language Support
       - gimp-help-en

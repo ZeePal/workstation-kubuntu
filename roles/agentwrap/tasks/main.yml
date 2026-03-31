@@ -12,7 +12,25 @@
     - /etc/systemd/resolved.conf.d
     - /etc/netns/agentwrap-egress
 
-- name: Install agentwrap config files
+- name: Install agentwrap core config file
+  copy:
+    src: "{{ role_path }}/files/opt/agentwrap/agentwrap.conf"
+    dest: /opt/agentwrap/agentwrap.conf
+    owner: root
+    group: root
+    mode: u=rw,go=r
+  register: agentwrap_core_config_file
+
+- name: Install agentwrap build source file
+  copy:
+    src: "{{ role_path }}/files/opt/agentwrap/agentwrap-seccomp.c"
+    dest: /opt/agentwrap/agentwrap-seccomp.c
+    owner: root
+    group: root
+    mode: u=rw,go=r
+  register: agentwrap_build_source_file
+
+- name: Install agentwrap network config files
   copy:
     src: "{{ role_path }}/files/{{ item }}"
     dest: "/{{ item }}"
@@ -20,14 +38,41 @@
     group: root
     mode: u=rw,go=r
   loop:
-    - opt/agentwrap/agentwrap.conf
     - etc/nftables.conf
     - etc/nftables.d/agentwrap.nft
     - etc/systemd/resolved.conf.d/agentwrap.conf
     - etc/netns/agentwrap-egress/resolv.conf
-  register: agentwrap_config_files
+  register: agentwrap_network_config_files
 
-- name: Install agentwrap helper binaries
+- name: Check installed agentwrap seccomp helper
+  stat:
+    path: /opt/agentwrap/bin/agentwrap-seccomp
+  register: agentwrap_seccomp_helper
+
+- name: Build agentwrap seccomp helper
+  shell: >-
+    set -euo pipefail &&
+    cc -O2 -Wall -Wextra $(pkg-config --cflags libseccomp)
+    -o /opt/agentwrap/bin/agentwrap-seccomp
+    /opt/agentwrap/agentwrap-seccomp.c
+    $(pkg-config --libs libseccomp)
+  args:
+    executable: /bin/bash
+  when: agentwrap_build_source_file.changed or not agentwrap_seccomp_helper.stat.exists
+
+- name: Install agentwrap egress helper binaries
+  copy:
+    src: "{{ role_path }}/files/{{ item }}"
+    dest: "/{{ item }}"
+    owner: root
+    group: root
+    mode: u=rwx,go=rx
+  loop:
+    - opt/agentwrap/bin/agentwrap-egress-init
+    - opt/agentwrap/bin/agentwrap-egress-reset
+  register: agentwrap_egress_helper_binaries
+
+- name: Install agentwrap non-egress helper binaries
   copy:
     src: "{{ role_path }}/files/{{ item }}"
     dest: "/{{ item }}"
@@ -37,8 +82,6 @@
   loop:
     - opt/agentwrap/bin/agentwrap-check
     - opt/agentwrap/bin/agentwrap-test
-    - opt/agentwrap/bin/agentwrap-egress-init
-    - opt/agentwrap/bin/agentwrap-egress-reset
   register: agentwrap_helper_binaries
 
 - name: Install agentwrap launch binaries
@@ -81,7 +124,7 @@
   command:
     cmd: nft -c -f /etc/nftables.conf
   changed_when: false
-  when: agentwrap_config_files.changed
+  when: agentwrap_network_config_files.changed
 
 - name: Ensure nftables service is enabled
   ansible.builtin.systemd_service:
@@ -93,7 +136,7 @@
   ansible.builtin.systemd_service:
     name: nftables.service
     state: reloaded
-  when: agentwrap_config_files.changed
+  when: agentwrap_network_config_files.changed
 
 - name: Ensure agentwrap egress service is enabled
   ansible.builtin.systemd_service:
@@ -107,10 +150,10 @@
     name: agentwrap-egress.service
     state: reloaded
     daemon_reload: true
-  when: agentwrap_systemd_unit.changed or agentwrap_config_files.changed or agentwrap_helper_binaries.changed
+  when: agentwrap_systemd_unit.changed or agentwrap_core_config_file.changed or agentwrap_egress_helper_binaries.changed
 
 - name: Restart systemd-resolved service
   ansible.builtin.systemd_service:
     name: systemd-resolved.service
     state: restarted
-  when: agentwrap_config_files.changed
+  when: agentwrap_network_config_files.changed

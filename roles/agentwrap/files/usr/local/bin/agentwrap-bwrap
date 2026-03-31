@@ -11,6 +11,67 @@ source /opt/agentwrap/agentwrap.conf
 
 allowed_env_names=("${PASSTHROUGH_ENV_VARS[@]}")
 
+current_uid="$(id -u)"
+current_gid="$(id -g)"
+current_user="${USER:-$(id -un)}"
+current_group="$(id -gn)"
+current_shell="${SHELL:-/bin/sh}"
+
+root_passwd_entry="$(getent passwd 0 || true)"
+if [[ -z "$root_passwd_entry" ]]; then
+    root_passwd_entry='root:x:0:0:root:/root:/usr/sbin/nologin'
+fi
+
+user_passwd_entry="$(getent passwd "$current_uid" || true)"
+if [[ -z "$user_passwd_entry" ]]; then
+    user_passwd_entry="${current_user}:x:${current_uid}:${current_gid}:${current_user}:${HOME}:${current_shell}"
+fi
+
+root_group_entry="$(getent group 0 || true)"
+if [[ -z "$root_group_entry" ]]; then
+    root_group_entry='root:x:0:'
+fi
+
+user_group_entry="$(getent group "$current_gid" || true)"
+if [[ -z "$user_group_entry" ]]; then
+    user_group_entry="${current_group}:x:${current_gid}:"
+fi
+
+# Keep identity files minimal to avoid leaking host account/group metadata.
+passwd_lines=("$root_passwd_entry")
+if [[ "$user_passwd_entry" != "$root_passwd_entry" ]]; then
+    passwd_lines+=("$user_passwd_entry")
+fi
+if nobody_entry="$(getent passwd 65534 2>/dev/null)"; then
+    if [[ "$nobody_entry" != "$root_passwd_entry" && "$nobody_entry" != "$user_passwd_entry" ]]; then
+        passwd_lines+=("$nobody_entry")
+    fi
+fi
+printf -v passwd_content '%s\n' "${passwd_lines[@]}"
+passwd_content="${passwd_content%$'\n'}"
+
+group_lines=("$root_group_entry")
+if [[ "$user_group_entry" != "$root_group_entry" ]]; then
+    group_lines+=("$user_group_entry")
+fi
+if nogroup_entry="$(getent group 65534 2>/dev/null)"; then
+    if [[ "$nogroup_entry" != "$root_group_entry" && "$nogroup_entry" != "$user_group_entry" ]]; then
+        group_lines+=("$nogroup_entry")
+    fi
+fi
+printf -v group_content '%s\n' "${group_lines[@]}"
+group_content="${group_content%$'\n'}"
+
+exec {passwd_fd}<<<"$passwd_content"
+exec {group_fd}<<<"$group_content"
+
+if [[ ! -x /opt/agentwrap/bin/agentwrap-seccomp ]]; then
+    echo "ERROR: missing required seccomp helper: /opt/agentwrap/bin/agentwrap-seccomp" >&2
+    exit 1
+fi
+
+exec {seccomp_fd}< <(/opt/agentwrap/bin/agentwrap-seccomp)
+
 # if AWS creds have been requested, grab and passthrough
 if [[ -n ${AGENTWRAP_AWS_PROFILE:-} ]]; then
     # "true" is to defer the profile lookup to the normal profile env var
@@ -75,6 +136,8 @@ done
 bwrap_args=(
     --unshare-all
     --share-net
+    --unshare-user
+    --disable-userns
     --die-with-parent
     --new-session
     --ro-bind /usr /usr
@@ -84,20 +147,23 @@ bwrap_args=(
     --ro-bind /sbin /sbin
     --proc /proc
     --dev /dev
+    --tmpfs /dev/shm
     --tmpfs /tmp
     --tmpfs /run
     --ro-bind /etc/resolv.conf /etc/resolv.conf
     --ro-bind /etc/hosts /etc/hosts
-    --ro-bind /etc/nsswitch.conf /etc/nsswitch.conf
-    --ro-bind /etc/passwd /etc/passwd
-    --ro-bind /etc/group /etc/group
+    --perms 0644
+    --ro-bind-data "$passwd_fd" /etc/passwd
+    --perms 0644
+    --ro-bind-data "$group_fd" /etc/group
     --ro-bind /etc/localtime /etc/localtime
     --ro-bind /etc/alternatives /etc/alternatives
-    --ro-bind-try /etc/ssl /etc/ssl
+    --ro-bind-try /etc/ssl/certs /etc/ssl/certs
     --ro-bind-try /etc/ca-certificates /etc/ca-certificates
     --dir "$HOME"
     --chdir "$PWD"
     --setenv PATH "$AGENTWRAP_PATH"
+    --seccomp "$seccomp_fd"
 )
 
 bwrap_args+=("${binds_extra_ro[@]}")

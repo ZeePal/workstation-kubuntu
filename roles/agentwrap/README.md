@@ -48,6 +48,7 @@ agentwrap-bwrap
            - read-only system paths
            - writable workspace + selected state dirs only
            - environment stripped to an allowlist
+           - seccomp filter (whitelist syscalls)
 ```
 
 ## Components
@@ -57,6 +58,7 @@ agentwrap-bwrap
 - `files/usr/local/bin/agentwrap-unroot`: restores the limited cross-boundary environment and hands off to `agentwrap-bwrap`
 - `files/usr/local/bin/agentwrap-bwrap`: builds the `bubblewrap` sandbox, injects optional cloud creds, and strips the final environment
 - `files/opt/agentwrap/agentwrap.conf`: central policy/config for paths, env allowlists, extra binds, and namespace naming
+- `files/opt/agentwrap/agentwrap-seccomp.c`: seccomp generator source compiled to `/opt/agentwrap/bin/agentwrap-seccomp` during role apply
 - `files/etc/nftables.conf` and `files/etc/nftables.d/agentwrap.nft`: host firewall defaults plus the dedicated agentwrap egress ruleset
 - `files/etc/systemd/system/agentwrap-egress.service`: keeps the shared namespace and veth pair present across boots/reloads
 - `files/opt/agentwrap/bin/agentwrap-egress-init`: creates the namespace, veth pair, routes, and IPv6 posture
@@ -72,6 +74,8 @@ agentwrap-bwrap
 - `nftables` blocks private/special-use ranges by default and limits outbound traffic to approved uplinks.
 - `systemd-resolved` exposes DNS on the host-side veth so namespace DNS does not bypass host policy.
 - `bubblewrap` makes the workspace the primary writable surface; system paths are read-only and most of `$HOME` is synthetic/empty.
+- Synthetic `passwd`/`group` files expose only `root`, the calling user/group, and `nobody`/`nogroup` when present.
+- The seccomp layer uses a baseline container-style allowlist while still permitting typical agent workloads.
 - Final environment stripping limits what secrets and host context survive into the sandbox.
 
 ## Operational Notes
