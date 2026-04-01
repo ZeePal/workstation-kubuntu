@@ -224,8 +224,8 @@ expect_node_spawn_sync() {
     local result
     result="$(
         "$runner" node -e 'const cp = require("node:child_process");
-const out = cp.spawnSync("true", [], { stdio: "ignore" });
-process.stdout.write(out.status === 0 ? "ok" : "fail");'
+const out = cp.spawnSync("sh", ["-lc", "printf ok"], { encoding: "utf8" });
+process.stdout.write(out.status === 0 && out.stdout === "ok" ? "ok" : "fail");'
     )"
     [[ "$result" == 'ok' ]]
 }

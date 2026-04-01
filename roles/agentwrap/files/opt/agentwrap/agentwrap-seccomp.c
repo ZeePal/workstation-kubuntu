@@ -414,6 +414,10 @@ static int install_rules(scmp_filter_ctx ctx) {
     return -1;
   }
 
+  if (allow_by_name(ctx, "socketpair") != 0) {
+    return -1;
+  }
+
   return 0;
 }
 
