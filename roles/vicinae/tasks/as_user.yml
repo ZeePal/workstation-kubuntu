@@ -1,0 +1,22 @@
+- name: Bind MetaSpace to Vicinae toggle
+  kconfig:
+    file: ~/.config/kglobalshortcutsrc
+    groups: [vicinae.desktop]
+    key: "{{ item.key }}"
+    value: "{{ item.value }}"
+  with_dict:
+    _k_friendly_name: Vicinae
+    _launch: none,none,Vicinae
+    close: none,none,Close Vicinae Window
+    open: none,none,Open Vicinae Window
+    toggle: Meta+Space,none,Toggle Vicinae Window
+
+- name: Enable Vicinae systemd user service
+  systemd:
+    scope: user
+    name: vicinae
+    state: started
+    enabled: true
+    daemon_reload: true
+  environment:
+    XDG_RUNTIME_DIR: "/run/user/{{ UID }}"

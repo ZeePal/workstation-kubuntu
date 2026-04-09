@@ -1,0 +1,9 @@
+{
+  "name": "com.vicinae.vicinae",
+  "description": "Vicinae Native Messaging Host",
+  "path": "/usr/local/lib/vicinae/usr/libexec/vicinae/vicinae-browser-link",
+  "type": "stdio",
+  "allowed_extensions": [
+    "vicinae@vicinae.com"
+  ]
+}

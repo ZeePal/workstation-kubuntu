@@ -1,0 +1,228 @@
+- name: Create Vicinae opt folders
+  file:
+    state: directory
+    path: /opt/vicinae
+    owner: root
+    group: root
+    mode: u=rwx,go=rx
+
+- name: Create Vicinae install target folders
+  file:
+    state: directory
+    path: "{{ item }}"
+    owner: root
+    group: root
+    mode: u=rwx,go=rx
+  loop:
+    - /usr/local/share/applications
+    - /usr/local/share/pixmaps
+    - /usr/local/share/vicinae
+    - /usr/local/share/vicinae/themes
+    - /usr/local/lib/systemd/user
+    - /usr/local/lib/udev/rules.d
+    - /usr/local/lib/modules-load.d
+
+- name: Get latest version number of Vicinae
+  uri:
+    url: https://api.github.com/repos/vicinaehq/vicinae/releases/latest
+    return_content: true
+  check_mode: false # always run the task
+  register: vicinae_latest_release
+
+- name: Set Vicinae release asset facts
+  set_fact:
+    vicinae_appimage_asset: >-
+      {{
+        vicinae_latest_release.json.assets
+        | selectattr('name', 'equalto', 'Vicinae-x86_64.AppImage')
+        | first
+      }}
+
+- name: Ensure Vicinae release assets were found
+  assert:
+    that:
+      - vicinae_appimage_asset is mapping
+    fail_msg: Failed to locate the expected Vicinae AppImage release asset on GitHub.
+
+- name: Download latest version of Vicinae
+  get_url:
+    url: "{{ vicinae_appimage_asset.browser_download_url }}"
+    dest: "/opt/vicinae/Vicinae-{{ vicinae_latest_release.json.tag_name }}-x86_64.AppImage"
+    mode: u=rwx,go=rx
+    checksum: "{{ vicinae_appimage_asset.digest }}"
+
+- name: Create extracted Vicinae folder
+  file:
+    state: directory
+    path: "/opt/vicinae/{{ vicinae_latest_release.json.tag_name }}"
+    owner: root
+    group: root
+    mode: u=rwx,go=rx
+
+- name: Extract Vicinae AppImage
+  command:
+    cmd: >-
+      /opt/vicinae/Vicinae-{{ vicinae_latest_release.json.tag_name }}-x86_64.AppImage
+      --appimage-extract
+    chdir: "/opt/vicinae/{{ vicinae_latest_release.json.tag_name }}"
+    creates: "/opt/vicinae/{{ vicinae_latest_release.json.tag_name }}/squashfs-root/AppRun"
+
+- name: Ensure extracted Vicinae tree is root owned
+  file:
+    path: "/opt/vicinae/{{ vicinae_latest_release.json.tag_name }}/squashfs-root"
+    owner: root
+    group: root
+    recurse: true
+
+- name: Point Vicinae active install symlink at extracted tree
+  file:
+    src: "/opt/vicinae/{{ vicinae_latest_release.json.tag_name }}/squashfs-root"
+    dest: /usr/local/lib/vicinae
+    owner: root
+    group: root
+    state: link
+
+- name: Install Vicinae launcher binary
+  stat:
+    path: /usr/local/lib/vicinae/usr/bin/vicinae
+  register: vicinae_binary
+
+- name: Install Vicinae launcher binary from packaged path
+  file:
+    src: "/opt/vicinae/{{ vicinae_latest_release.json.tag_name }}/squashfs-root/usr/bin/vicinae"
+    dest: /usr/local/bin/vicinae
+    owner: root
+    group: root
+    state: link
+  when: vicinae_binary.stat.exists
+
+- name: Install Vicinae launcher binary from AppRun fallback
+  file:
+    src: "/opt/vicinae/{{ vicinae_latest_release.json.tag_name }}/squashfs-root/AppRun"
+    dest: /usr/local/bin/vicinae
+    owner: root
+    group: root
+    state: link
+  when: not vicinae_binary.stat.exists
+
+- name: Check for Vicinae bundled node binary
+  stat:
+    path: /usr/local/lib/vicinae/usr/bin/node
+  register: vicinae_node_binary
+
+- name: Install Vicinae node binary
+  file:
+    src: "/opt/vicinae/{{ vicinae_latest_release.json.tag_name }}/squashfs-root/usr/bin/node"
+    dest: /usr/local/bin/vicinae-node
+    owner: root
+    group: root
+    state: link
+  when: vicinae_node_binary.stat.exists
+
+- name: Install Vicinae themes
+  copy:
+    remote_src: true
+    src: "/opt/vicinae/{{ vicinae_latest_release.json.tag_name }}/squashfs-root/usr/share/vicinae/themes/"
+    dest: /usr/local/share/vicinae/themes/
+    owner: root
+    group: root
+    mode: preserve
+
+- name: Install Vicinae desktop entry
+  copy:
+    src: "{{ role_path }}/files/usr/local/share/applications/vicinae.desktop"
+    dest: /usr/local/share/applications/vicinae.desktop
+    owner: root
+    group: root
+    mode: u=rw,go=r
+
+- name: Install Vicinae URL handler desktop entry
+  copy:
+    src: "{{ role_path }}/files/usr/local/share/applications/vicinae-url-handler.desktop"
+    dest: /usr/local/share/applications/vicinae-url-handler.desktop
+    owner: root
+    group: root
+    mode: u=rw,go=r
+
+- name: Install Vicinae icon
+  copy:
+    remote_src: true
+    src: "/opt/vicinae/{{ vicinae_latest_release.json.tag_name }}/squashfs-root/vicinae.png"
+    dest: /usr/local/share/pixmaps/vicinae.png
+    owner: root
+    group: root
+    mode: u=rw,go=r
+
+- name: Install Vicinae systemd user service
+  copy:
+    src: "{{ role_path }}/files/usr/local/lib/systemd/user/vicinae.service"
+    dest: /usr/local/lib/systemd/user/vicinae.service
+    owner: root
+    group: root
+    mode: u=rw,go=r
+
+- name: Install Vicinae native messaging manifest for Chromium
+  file:
+    path: /etc/chromium/native-messaging-hosts
+    state: directory
+    owner: root
+    group: root
+    mode: u=rwx,go=rx
+
+- name: Install Vicinae native messaging manifest for Chromium
+  copy:
+    src: "{{ role_path }}/files/etc/chromium/native-messaging-hosts/com.vicinae.vicinae.json"
+    dest: /etc/chromium/native-messaging-hosts/com.vicinae.vicinae.json
+    owner: root
+    group: root
+    mode: u=rw,go=r
+
+- name: Install Vicinae native messaging manifest for Firefox
+  file:
+    path: /usr/lib/mozilla/native-messaging-hosts
+    state: directory
+    owner: root
+    group: root
+    mode: u=rwx,go=rx
+
+- name: Install Vicinae native messaging manifest for Firefox
+  copy:
+    src: "{{ role_path }}/files/usr/lib/mozilla/native-messaging-hosts/com.vicinae.vicinae.json"
+    dest: /usr/lib/mozilla/native-messaging-hosts/com.vicinae.vicinae.json
+    owner: root
+    group: root
+    mode: u=rw,go=r
+
+- name: Install Vicinae udev rules
+  copy:
+    src: "{{ role_path }}/files/usr/local/lib/udev/rules.d/70-vicinae.rules"
+    dest: /usr/local/lib/udev/rules.d/70-vicinae.rules
+    owner: root
+    group: root
+    mode: u=rw,go=r
+  register: vicinae_udev_rules
+
+- name: Install Vicinae modules-load config
+  copy:
+    src: "{{ role_path }}/files/usr/local/lib/modules-load.d/vicinae.conf"
+    dest: /usr/local/lib/modules-load.d/vicinae.conf
+    owner: root
+    group: root
+    mode: u=rw,go=r
+
+- name: Load uinput module
+  command:
+    cmd: modprobe uinput
+  changed_when: false
+
+- name: Reload udev rules
+  command:
+    cmd: udevadm control --reload-rules
+  when: vicinae_udev_rules.changed
+  changed_when: false
+
+- name: Trigger udev rules
+  command:
+    cmd: udevadm trigger
+  when: vicinae_udev_rules.changed
+  changed_when: false

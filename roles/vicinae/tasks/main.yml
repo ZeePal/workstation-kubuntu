@@ -1,0 +1,5 @@
+- import_tasks: as_root.yml
+
+- import_tasks: as_user.yml
+  become: true
+  become_user: "{{ USER }}"

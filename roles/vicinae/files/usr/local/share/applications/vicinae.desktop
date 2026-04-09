@@ -1,0 +1,25 @@
+[Desktop Entry]
+Type=Application
+Name=Vicinae
+GenericName=Vicinae
+Comment=A focused launcher for your desktop
+Exec=vicinae server --replace
+Terminal=false
+Icon=vicinae
+Categories=Utility;Accessibility;
+NoDisplay=false
+Actions=open;close;toggle
+StartupWMClass=vicinae
+StartupNotify=false
+
+[Desktop Action open]
+Name=Open Vicinae Window
+Exec=vicinae open
+
+[Desktop Action close]
+Name=Close Vicinae Window
+Exec=vicinae close
+
+[Desktop Action toggle]
+Name=Toggle Vicinae Window
+Exec=vicinae toggle

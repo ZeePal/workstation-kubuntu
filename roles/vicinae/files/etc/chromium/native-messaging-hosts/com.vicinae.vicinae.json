@@ -1,0 +1,9 @@
+{
+  "name": "com.vicinae.vicinae",
+  "description": "IPC Native Messaging Host",
+  "path": "/usr/local/lib/vicinae/usr/libexec/vicinae/vicinae-browser-link",
+  "type": "stdio",
+  "allowed_origins": [
+    "chrome-extension://com.vicinae.vicinae/"
+  ]
+}
