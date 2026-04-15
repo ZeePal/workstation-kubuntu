@@ -172,6 +172,15 @@ bwrap_args+=("${binds_extra_rw[@]}")
 # read-only or synthetic unless explicitly bound above.
 bwrap_args+=(--bind "$workspace" "$workspace")
 
+# Keep selected workspace-root control paths read-only even though the
+# workspace root itself is writable.
+for carveout_name in "${WORKSPACE_ROOT_RO_CARVEOUTS[@]}"; do
+    carveout_path="$workspace/$carveout_name"
+    if [[ -e "$carveout_path" ]]; then
+        bwrap_args+=(--ro-bind "$carveout_path" "$carveout_path")
+    fi
+done
+
 # Strip/unset all envvars not to be passed through to the sandbox
 for current_var in $(compgen -e); do
     keep_var="0"
