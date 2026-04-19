@@ -10,7 +10,7 @@
       curl -s https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html \
         |sed -r -n '/-----BEGIN PGP PUBLIC KEY BLOCK-----/,/-----END PGP PUBLIC KEY BLOCK-----/{p; /-----END PGP PUBLIC KEY BLOCK-----/q;}' \
         |sed -r 's/^.*(-----BEGIN PGP PUBLIC KEY BLOCK-----)/\1/;s/(-----END PGP PUBLIC KEY BLOCK-----).*$/\1/' > /opt/aws/cli/awscli.gpg.asc
-    creates: /opt/aws/cli/awscli.gpg
+    creates: /opt/aws/cli/awscli.gpg.asc
 
 - name: Get AWS cli gpg key hash
   stat:
