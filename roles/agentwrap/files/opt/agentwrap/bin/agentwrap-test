@@ -41,8 +41,8 @@ fi
 
 test_root="${TMPDIR:-/tmp}/agentwrap-test-$$"
 hidden_host_path="$test_root/hidden.txt"
-rw_dir="${EXTRA_RW_DIRS[0]}"
-ro_dir="${EXTRA_RO_DIRS[0]}"
+rw_dir="${EXTRA_RW[0]}"
+ro_dir="${EXTRA_RO[0]}"
 workspace_rw_file="$PWD/.agentwrap-test-rw-$$"
 extra_rw_file="$rw_dir/.agentwrap-test-rw-$$"
 extra_ro_file="$ro_dir/.agentwrap-test-ro-$$"

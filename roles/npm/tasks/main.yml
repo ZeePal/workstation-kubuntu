@@ -7,3 +7,4 @@
   with_items:
     - opencode-ai
     - '@openai/codex'
+    - '@mariozechner/pi-coding-agent'

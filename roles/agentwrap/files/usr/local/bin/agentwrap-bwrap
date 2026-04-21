@@ -120,16 +120,16 @@ if [[ -z "$workspace" ]]; then
 fi
 
 binds_extra_ro=()
-for dir in "${EXTRA_RO_DIRS[@]}"; do
-    if [[ -d "$dir" ]]; then
-        binds_extra_ro+=(--ro-bind-try "$dir" "$dir")
+for bind in "${EXTRA_RO[@]}"; do
+    if [[ -e "$bind" ]]; then
+        binds_extra_ro+=(--ro-bind-try "$bind" "$bind")
     fi
 done
 
 binds_extra_rw=()
-for dir in "${EXTRA_RW_DIRS[@]}"; do
-    if [[ -d "$dir" ]]; then
-        binds_extra_rw+=(--bind-try "$dir" "$dir")
+for bind in "${EXTRA_RW[@]}"; do
+    if [[ -e "$bind" ]]; then
+        binds_extra_rw+=(--bind-try "$bind" "$bind")
     fi
 done
 
