@@ -7,56 +7,234 @@ source /opt/agentwrap/agentwrap.conf
 
 private_url="${1:-}"
 curl_timeout_seconds="${AGENTWRAP_TEST_CURL_TIMEOUT:-2}"
-google_ipv4=""
-have_python3='0'
-have_node='0'
-have_git='0'
-have_script='0'
+codex_timeout_seconds="${AGENTWRAP_TEST_CODEX_TIMEOUT:-5}"
 
-if [[ -n "$private_url" && ! "$private_url" =~ ^https?:// ]]; then
-    echo "ERROR: private target must be http://... or https://..." >&2
+has_host_cmd() {
+    command -v "$1" >/dev/null 2>&1
+}
+
+require_host_cmd() {
+    if has_host_cmd "$1"; then
+        return 0
+    fi
+    echo "ERROR: required command not found: $1" >&2
     exit 1
-fi
+}
 
-while read -r ip _; do
-    google_ipv4="$ip"
-    break
-done < <(getent ahostsv4 google.com)
+runner_has_cmd() {
+    local runner="$1"
+    local cmd="$2"
+    "$runner" bash -lc "command -v \"$cmd\" >/dev/null 2>&1"
+}
 
-if command -v python3 >/dev/null 2>&1; then
-    have_python3='1'
-fi
+resolve_google_ipv4() {
+    local ip=''
+    while read -r ip _; do
+        printf '%s\n' "$ip"
+        return 0
+    done < <(getent ahostsv4 google.com 2>/dev/null || true)
+    return 1
+}
 
-if command -v node >/dev/null 2>&1; then
-    have_node='1'
-fi
+run_with_optional_timeout() {
+    local seconds="$1"
+    shift
 
-if command -v git >/dev/null 2>&1; then
-    have_git='1'
-fi
+    if [[ -n "$TIMEOUT_BIN" ]]; then
+        "$TIMEOUT_BIN" -k 5s "${seconds}s" "$@"
+        return $?
+    fi
 
-if command -v script >/dev/null 2>&1; then
-    have_script='1'
-fi
+    "$@"
+}
+
+validate_private_url() {
+    local url="$1"
+    if [[ -n "$url" && ! "$url" =~ ^https?:// ]]; then
+        echo "ERROR: private target must be http://... or https://..." >&2
+        exit 1
+    fi
+}
+
+validate_private_url "$private_url"
+
+require_host_cmd curl
+require_host_cmd python3
+
+TIMEOUT_BIN="$(command -v timeout 2>/dev/null || true)"
+GOOGLE_IPV4="$(resolve_google_ipv4 || true)"
+HOST_HAS_BWRAP=0
+HOST_HAS_NODE=0
+HOST_HAS_GIT=0
+HOST_HAS_SCRIPT=0
+
+has_host_cmd bwrap && HOST_HAS_BWRAP=1
+has_host_cmd node && HOST_HAS_NODE=1
+has_host_cmd git && HOST_HAS_GIT=1
+has_host_cmd script && HOST_HAS_SCRIPT=1
 
 test_root="${TMPDIR:-/tmp}/agentwrap-test-$$"
+codex_home_root="$HOME/.codex/agentwrap-test-$$"
 hidden_host_path="$test_root/hidden.txt"
 rw_dir="${EXTRA_RW[0]}"
 ro_dir="${EXTRA_RO[0]}"
-workspace_rw_file="$PWD/.agentwrap-test-rw-$$"
-extra_rw_file="$rw_dir/.agentwrap-test-rw-$$"
-extra_ro_file="$ro_dir/.agentwrap-test-ro-$$"
+app_server_helper="$test_root/app_server_exec_helper.py"
 
-# shellcheck disable=SC2317,SC2329 # Invoked by trap on script exit.
 cleanup() {
-    rm -f "$workspace_rw_file" "$extra_rw_file" "$extra_ro_file"
-    rm -rf "$test_root"
+    rm -f "$PWD"/.agentwrap-test-*"-$$" 2>/dev/null || true
+    rm -f "$rw_dir"/.agentwrap-test-*"-$$" 2>/dev/null || true
+    rm -f "$ro_dir"/.agentwrap-test-*"-$$" 2>/dev/null || true
+    rm -rf "$test_root" "$codex_home_root"
 }
 trap cleanup EXIT
 
-mkdir -p "$test_root" "$rw_dir" "$ro_dir"
+mkdir -p "$test_root" "$codex_home_root" "$rw_dir" "$ro_dir"
 printf 'hidden\n' >"$hidden_host_path"
-rm -f "$workspace_rw_file" "$extra_rw_file" "$extra_ro_file"
+
+cat >"$app_server_helper" <<'PY'
+import json
+import os
+import subprocess
+import sys
+import time
+
+runner = os.environ["APP_RUNNER"]
+workspace = os.environ["APP_WORKSPACE"]
+script = os.environ["APP_SCRIPT"]
+case_kind = os.environ["APP_CASE_KIND"]
+log_json = os.environ["APP_LOG_JSON"]
+codex_home = os.environ["APP_CODEX_HOME"]
+timeout_secs = int(os.environ.get("APP_TIMEOUT_SECS", "30"))
+
+if case_kind == "readonly_restricted":
+    sandbox = {"type": "readOnly", "networkAccess": False}
+elif case_kind == "workspace_restricted":
+    sandbox = {
+        "type": "workspaceWrite",
+        "writableRoots": [workspace],
+        "networkAccess": False,
+        "excludeTmpdirEnvVar": False,
+        "excludeSlashTmp": False,
+    }
+elif case_kind == "workspace_enabled":
+    sandbox = {
+        "type": "workspaceWrite",
+        "writableRoots": [workspace],
+        "networkAccess": True,
+        "excludeTmpdirEnvVar": False,
+        "excludeSlashTmp": False,
+    }
+elif case_kind == "external_enabled":
+    sandbox = {"type": "externalSandbox", "networkAccess": "enabled"}
+else:
+    raise SystemExit(f"unknown APP_CASE_KIND: {case_kind}")
+
+server_cmd = [runner, "env", f"CODEX_HOME={codex_home}", "codex", "app-server", "--listen", "stdio://"]
+proc = subprocess.Popen(
+    server_cmd,
+    cwd=workspace,
+    stdin=subprocess.PIPE,
+    stdout=subprocess.PIPE,
+    stderr=subprocess.PIPE,
+    text=True,
+    bufsize=1,
+)
+
+record = {
+    "serverCmd": server_cmd,
+    "initializeResponse": None,
+    "notifications": [],
+    "commandExecResponse": None,
+    "serverStderr": "",
+    "serverReturnCode": None,
+}
+
+
+def send(obj):
+    proc.stdin.write(json.dumps(obj) + "\n")
+    proc.stdin.flush()
+
+
+def recv_until_response(target_id):
+    deadline = time.time() + timeout_secs
+    while time.time() < deadline:
+        line = proc.stdout.readline()
+        if not line:
+            break
+        msg = json.loads(line)
+        if msg.get("id") == target_id:
+            return msg
+        record["notifications"].append(msg)
+    raise TimeoutError(f"timed out waiting for response id={target_id}")
+
+
+try:
+    send({
+        "id": 1,
+        "method": "initialize",
+        "params": {
+            "clientInfo": {
+                "name": "agentwrap_codex_nesting_probe",
+                "title": "agentwrap codex nesting probe",
+                "version": "0"
+            }
+        }
+    })
+    record["initializeResponse"] = recv_until_response(1)
+    send({"method": "initialized", "params": {}})
+    send({
+        "id": 2,
+        "method": "command/exec",
+        "params": {
+            "command": ["bash", "-lc", script],
+            "cwd": workspace,
+            "disableTimeout": True,
+            "sandboxPolicy": sandbox,
+        }
+    })
+    record["commandExecResponse"] = recv_until_response(2)
+except Exception as exc:  # noqa: BLE001
+    record["exception"] = repr(exc)
+finally:
+    try:
+        if proc.stdin:
+            proc.stdin.close()
+    except Exception:
+        pass
+    try:
+        proc.terminate()
+    except Exception:
+        pass
+    try:
+        proc.wait(timeout=5)
+    except Exception:
+        try:
+            proc.kill()
+        except Exception:
+            pass
+        try:
+            proc.wait(timeout=5)
+        except Exception:
+            pass
+    try:
+        record["serverStderr"] = proc.stderr.read() if proc.stderr else ""
+    except Exception:
+        pass
+    record["serverReturnCode"] = proc.returncode
+    with open(log_json, "w", encoding="utf-8") as fh:
+        json.dump(record, fh, indent=2)
+
+if record.get("exception"):
+    print(record["exception"], file=sys.stderr)
+    sys.exit(1)
+
+resp = record.get("commandExecResponse") or {}
+if "error" in resp:
+    print(json.dumps(resp["error"], indent=2), file=sys.stderr)
+    sys.exit(2)
+
+sys.exit(0)
+PY
 
 if [[ -t 1 ]]; then
     color_pass=$'\033[32m'
@@ -70,31 +248,48 @@ else
     color_reset=''
 fi
 
-# shellcheck disable=SC2317 # Indirectly invoked via run_check in parallel suites.
+suite_label=''
+suite_pass=0
+suite_fail=0
+suite_skip=0
+suite_counts_file=''
+
 print_pass() {
-    local label="$1"
-    local name="$2"
-    printf '[%s] %sPASS%s %s\n' "$label" "$color_pass" "$color_reset" "$name"
+    suite_pass=$((suite_pass + 1))
+    printf '[%s] %sPASS%s %s\n' "$suite_label" "$color_pass" "$color_reset" "$1"
 }
 
-# shellcheck disable=SC2317 # Indirectly invoked via run_check in parallel suites.
 print_fail() {
-    local label="$1"
-    local name="$2"
-    printf '[%s] %sFAIL%s %s\n' "$label" "$color_fail" "$color_reset" "$name" >&2
+    suite_fail=$((suite_fail + 1))
+    printf '[%s] %sFAIL%s %s\n' "$suite_label" "$color_fail" "$color_reset" "$1" >&2
 }
 
-# shellcheck disable=SC2317 # Used conditionally for optional test cases.
 print_skip() {
-    local label="$1"
-    local name="$2"
-    printf '[%s] %sSKIP%s %s\n' "$label" "$color_skip" "$color_reset" "$name"
+    suite_skip=$((suite_skip + 1))
+    printf '[%s] %sSKIP%s %s\n' "$suite_label" "$color_skip" "$color_reset" "$1"
 }
 
-# shellcheck disable=SC2317,SC2329 # Indirectly invoked through expect_* helpers.
+run_check() {
+    local name="$1"
+    shift
+
+    if "$@"; then
+        print_pass "$name"
+    else
+        print_fail "$name"
+    fi
+
+    return 0
+}
+
+write_suite_counts() {
+    printf '%s %s %s\n' "$suite_pass" "$suite_fail" "$suite_skip" >"$suite_counts_file"
+}
+
 run_curl() {
     local runner="$1"
     shift
+
     "$runner" curl \
         --insecure \
         --silent \
@@ -106,45 +301,45 @@ run_curl() {
         "$@"
 }
 
-# shellcheck disable=SC2317,SC2329 # Passed by name into run_check.
 expect_connect() {
     local runner="$1"
     local url="$2"
     local code
+
     code="$(run_curl "$runner" "$url")"
-    [[ -n "$code" && "$code" != "000" ]]
+    [[ -n "$code" && "$code" != '000' ]]
 }
 
-# shellcheck disable=SC2317,SC2329 # Passed by name into run_check.
 expect_connect_resolved() {
     local runner="$1"
     local host="$2"
     local ip="$3"
     local code
+
     code="$(run_curl "$runner" --resolve "$host:443:$ip" "https://$host")"
-    [[ -n "$code" && "$code" != "000" ]]
+    [[ -n "$code" && "$code" != '000' ]]
 }
 
-# shellcheck disable=SC2317,SC2329 # Passed by name into run_check.
 expect_block() {
     local runner="$1"
     local url="$2"
+
     if run_curl "$runner" "$url" >/dev/null 2>&1; then
         return 1
     fi
+
     return 0
 }
 
-# shellcheck disable=SC2317,SC2329 # Passed by name into run_check.
 expect_seccomp_mode() {
     local runner="$1"
     "$runner" bash -lc "grep -Eq '^Seccomp:[[:space:]]+2$' /proc/self/status"
 }
 
-# shellcheck disable=SC2317,SC2329 # Passed by name into run_check.
 expect_ptrace_blocked() {
     local runner="$1"
     local result
+
     result="$(
         "$runner" python3 -c 'import ctypes
 libc = ctypes.CDLL(None, use_errno=True)
@@ -154,13 +349,12 @@ print("%s %s" % (rc, ctypes.get_errno()))'
     [[ "$result" == '-1 1' ]]
 }
 
-# shellcheck disable=SC2317,SC2329 # Passed by name into run_check.
 expect_thread_creation() {
     local runner="$1"
     local result
+
     result="$(
         "$runner" python3 -c 'import threading
-
 result = []
 
 def worker():
@@ -174,10 +368,10 @@ print(result[0] if result else "fail")'
     [[ "$result" == 'ok' ]]
 }
 
-# shellcheck disable=SC2317,SC2329 # Passed by name into run_check.
 expect_python_getaddrinfo() {
     local runner="$1"
     local result
+
     result="$(
         "$runner" python3 -c 'import socket
 result = socket.getaddrinfo("google.com", 443)
@@ -186,10 +380,10 @@ print("ok" if result else "fail")'
     [[ "$result" == 'ok' ]]
 }
 
-# shellcheck disable=SC2317,SC2329 # Passed by name into run_check.
 expect_python_ssl() {
     local runner="$1"
     local result
+
     result="$(
         "$runner" python3 -c 'import ssl
 ctx = ssl.create_default_context()
@@ -198,10 +392,10 @@ print("ok" if ctx else "fail")'
     [[ "$result" == 'ok' ]]
 }
 
-# shellcheck disable=SC2317,SC2329 # Passed by name into run_check.
 expect_python_subprocess() {
     local runner="$1"
     local result
+
     result="$(
         "$runner" python3 -c 'import subprocess
 completed = subprocess.run(["true"], check=False)
@@ -210,18 +404,18 @@ print("ok" if completed.returncode == 0 else "fail")'
     [[ "$result" == 'ok' ]]
 }
 
-# shellcheck disable=SC2317,SC2329 # Passed by name into run_check.
 expect_node_runtime() {
     local runner="$1"
     local result
+
     result="$("$runner" node -e 'process.stdout.write("ok")')"
     [[ "$result" == 'ok' ]]
 }
 
-# shellcheck disable=SC2317,SC2329 # Passed by name into run_check.
 expect_node_spawn_sync() {
     local runner="$1"
     local result
+
     result="$(
         "$runner" node -e 'const cp = require("node:child_process");
 const out = cp.spawnSync("sh", ["-lc", "printf ok"], { encoding: "utf8" });
@@ -230,154 +424,661 @@ process.stdout.write(out.status === 0 && out.stdout === "ok" ? "ok" : "fail");'
     [[ "$result" == 'ok' ]]
 }
 
-# shellcheck disable=SC2317,SC2329 # Passed by name into run_check.
 expect_git_status() {
     local runner="$1"
     "$runner" git -C "$PWD" status --short >/dev/null
 }
 
-# shellcheck disable=SC2317,SC2329 # Passed by name into run_check.
 expect_git_toplevel() {
     local runner="$1"
     local result
+
     result="$("$runner" git -C "$PWD" rev-parse --show-toplevel 2>/dev/null || true)"
     [[ -n "$result" ]]
 }
 
-# shellcheck disable=SC2317,SC2329 # Passed by name into run_check.
 expect_pty_basic() {
     local runner="$1"
     "$runner" script -q -c true /dev/null >/dev/null
 }
 
-# shellcheck disable=SC2317,SC2329 # Passed by name into run_check.
-expect_userns_blocked() {
+expect_userns_allowed() {
     local runner="$1"
-    "$runner" bash -lc 'unshare -U true >/dev/null 2>&1; test $? -ne 0'
+    "$runner" bash -lc 'unshare -U true >/dev/null 2>&1'
 }
 
-# shellcheck disable=SC2317 # Called before definition and within backgrounded suites.
-run_check() {
-    local label="$1"
-    local name="$2"
-    shift 2
-    if "$@"; then
-        print_pass "$label" "$name"
+expect_nested_bwrap_userns() {
+    local runner="$1"
+    "$runner" bwrap --new-session --die-with-parent --ro-bind / / --unshare-user --unshare-pid -- true
+}
+
+expect_nested_bwrap_userns_net() {
+    local runner="$1"
+    "$runner" bwrap --new-session --die-with-parent --ro-bind / / --unshare-user --unshare-pid --unshare-net -- true
+}
+
+expect_nested_bwrap_userns_with_dev_proc() {
+    local runner="$1"
+    "$runner" bwrap --new-session --die-with-parent --ro-bind / / --proc /proc --dev /dev --unshare-user --unshare-pid -- true
+}
+
+expect_nested_bwrap_userns_net_with_dev_proc() {
+    local runner="$1"
+    "$runner" bwrap --new-session --die-with-parent --ro-bind / / --proc /proc --dev /dev --unshare-user --unshare-pid --unshare-net -- true
+}
+
+runner_has_codex_sandbox_linux() {
+    local runner="$1"
+    "$runner" bash -lc 'codex sandbox linux --help >/dev/null 2>&1'
+}
+
+runner_has_codex_app_server() {
+    local runner="$1"
+    "$runner" bash -lc 'codex app-server --help >/dev/null 2>&1'
+}
+
+make_codex_probe_script() {
+    local write_mode="$1"
+    local socket_mode="$2"
+    local output_file="$3"
+    local public_mode="${4:-skip}"
+    local private_mode="${5:-skip}"
+    local public_url_q
+    local public_resolve_q=''
+    local private_url_q=''
+
+    public_url_q="$(printf '%q' 'https://google.com')"
+    if [[ -n "$GOOGLE_IPV4" ]]; then
+        public_resolve_q="$(printf '%q' "google.com:443:$GOOGLE_IPV4")"
+    fi
+    if [[ "$private_mode" != 'skip' ]]; then
+        private_url_q="$(printf '%q' "$private_url")"
+    fi
+
+    {
+        cat <<EOF
+set -euo pipefail
+run_curl_probe() {
+  local label="\$1"
+  local expect="\$2"
+  shift 2
+  local code=''
+  code="\$(curl --insecure --silent --show-error --output /dev/null --write-out '%{http_code}' --connect-timeout ${curl_timeout_seconds} --max-time ${curl_timeout_seconds} "\$@" || true)"
+  if [[ -n "\$code" && "\$code" != '000' ]]; then
+    echo "\${label}_OK"
+    [[ "\$expect" == 'allow' ]]
+  else
+    echo "\${label}_BLOCKED"
+    [[ "\$expect" == 'deny' ]]
+  fi
+}
+echo "PWD=\$PWD"
+echo "USER_NS=\$(readlink /proc/self/ns/user 2>/dev/null || true)"
+echo "PID_NS=\$(readlink /proc/self/ns/pid 2>/dev/null || true)"
+echo "NET_NS=\$(readlink /proc/self/ns/net 2>/dev/null || true)"
+grep -E '^(NoNewPrivs|Seccomp|NSpid|Uid|Gid):' /proc/self/status || true
+if [[ "$write_mode" == "allow" ]]; then
+  printf 'ok\n' > "$output_file"
+  test -f "$output_file"
+  echo 'WRITE_OK'
+else
+  if touch "$output_file" >/dev/null 2>&1; then
+    echo 'UNEXPECTED_WRITE_OK'
+    exit 99
+  else
+    echo 'WRITE_DENIED_OK'
+  fi
+fi
+python3 - <<'PY'
+import socket, sys
+try:
+    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+except OSError as e:
+    print(f"INET_SOCKET_DENIED errno={getattr(e, 'errno', None)} err={e}")
+    if "$socket_mode" == "deny":
+        sys.exit(0)
+    sys.exit(98)
+else:
+    s.close()
+    print("INET_SOCKET_ALLOWED")
+    if "$socket_mode" == "allow":
+        sys.exit(0)
+    sys.exit(97)
+PY
+EOF
+        if [[ "$public_mode" != 'skip' && -n "$public_resolve_q" ]]; then
+            cat <<EOF
+run_curl_probe PUBLIC_RESOLVE $public_mode --resolve $public_resolve_q $public_url_q
+EOF
+        fi
+        if [[ "$public_mode" != 'skip' ]]; then
+            cat <<EOF
+run_curl_probe PUBLIC_DNS $public_mode $public_url_q
+EOF
+        fi
+        if [[ "$private_mode" != 'skip' ]]; then
+            cat <<EOF
+run_curl_probe PRIVATE_NET $private_mode $private_url_q
+EOF
+        fi
+    }
+}
+
+json_get() {
+    local path="$1"
+    local file="$2"
+
+    python3 - "$path" "$file" <<'PY'
+import json
+import sys
+
+path = sys.argv[1].split('.') if sys.argv[1] else []
+with open(sys.argv[2], 'r', encoding='utf-8') as fh:
+    value = json.load(fh)
+for part in path:
+    if isinstance(value, dict):
+        value = value.get(part)
+    else:
+        value = None
+        break
+if isinstance(value, (dict, list)):
+    print(json.dumps(value))
+elif value is None:
+    print('')
+else:
+    print(value)
+PY
+}
+
+codex_stdout_matches_network() {
+    local public_mode="$1"
+    local private_mode="$2"
+    local stdout_text="$3"
+
+    if [[ "$public_mode" != 'skip' ]]; then
+        if [[ -n "$GOOGLE_IPV4" ]]; then
+            if [[ "$public_mode" == 'allow' ]]; then
+                grep -q 'PUBLIC_RESOLVE_OK' <<<"$stdout_text" || return 1
+            else
+                grep -q 'PUBLIC_RESOLVE_BLOCKED' <<<"$stdout_text" || return 1
+            fi
+        fi
+
+        if [[ "$public_mode" == 'allow' ]]; then
+            grep -q 'PUBLIC_DNS_OK' <<<"$stdout_text" || return 1
+        else
+            grep -q 'PUBLIC_DNS_BLOCKED' <<<"$stdout_text" || return 1
+        fi
+    fi
+
+    if [[ "$private_mode" != 'skip' ]]; then
+        if [[ "$private_mode" == 'allow' ]]; then
+            grep -q 'PRIVATE_NET_OK' <<<"$stdout_text" || return 1
+        else
+            grep -q 'PRIVATE_NET_BLOCKED' <<<"$stdout_text" || return 1
+        fi
+    fi
+}
+
+codex_stdout_matches_case() {
+    local case_name="$1"
+    local stdout_text="$2"
+    local expect_file="$3"
+    local public_mode="$4"
+    local private_mode="$5"
+
+    case "$case_name" in
+    readonly_restricted)
+        grep -q 'WRITE_DENIED_OK' <<<"$stdout_text" && grep -q 'INET_SOCKET_DENIED' <<<"$stdout_text"
+        ;;
+    workspace_restricted)
+        grep -q 'WRITE_OK' <<<"$stdout_text" &&
+            grep -q 'INET_SOCKET_DENIED' <<<"$stdout_text" &&
+            [[ -f "$expect_file" ]]
+        ;;
+    workspace_enabled | external_enabled)
+        grep -q 'WRITE_OK' <<<"$stdout_text" &&
+            grep -q 'INET_SOCKET_ALLOWED' <<<"$stdout_text" &&
+            [[ -f "$expect_file" ]]
+        ;;
+    *)
+        return 1
+        ;;
+    esac && codex_stdout_matches_network "$public_mode" "$private_mode" "$stdout_text"
+}
+
+codex_case_timeout_seconds() {
+    local public_mode="$1"
+    local private_mode="$2"
+    local extra_seconds=2
+
+    if [[ "$public_mode" != 'skip' ]]; then
+        extra_seconds=$((extra_seconds + curl_timeout_seconds))
+        if [[ -n "$GOOGLE_IPV4" ]]; then
+            extra_seconds=$((extra_seconds + curl_timeout_seconds))
+        fi
+    fi
+
+    if [[ "$private_mode" != 'skip' ]]; then
+        extra_seconds=$((extra_seconds + curl_timeout_seconds))
+    fi
+
+    printf '%s\n' "$((codex_timeout_seconds + extra_seconds))"
+}
+
+expect_codex_cli_case() {
+    local runner="$1"
+    local case_name="$2"
+    local script="$3"
+    local expect_file="$4"
+    local public_mode="$5"
+    local private_mode="$6"
+    shift 6
+
+    local overrides=("$@")
+    local stdout_file="$test_root/${suite_label}.codex-cli.${case_name}.stdout"
+    local stderr_file="$test_root/${suite_label}.codex-cli.${case_name}.stderr"
+    local stdout_text=''
+    local rc=0
+    local case_timeout_seconds=''
+    local cmd=("$runner" env "CODEX_HOME=$suite_codex_home_dir" codex)
+    local override
+
+    case_timeout_seconds="$(codex_case_timeout_seconds "$public_mode" "$private_mode")"
+
+    rm -f "$expect_file" "$stdout_file" "$stderr_file"
+
+    for override in "${overrides[@]}"; do
+        cmd+=(-c "$override")
+    done
+
+    case "$case_name" in
+    readonly_restricted)
+        cmd+=(sandbox linux -- bash -lc "$script")
+        ;;
+    workspace_restricted | workspace_enabled)
+        cmd+=(-c 'sandbox_mode="workspace-write"' sandbox linux -- bash -lc "$script")
+        ;;
+    *)
+        echo "unknown codex cli case: $case_name" >&2
+        return 1
+        ;;
+    esac
+
+    set +e
+    (
+        cd "$suite_codex_test_dir"
+        run_with_optional_timeout "$case_timeout_seconds" "${cmd[@]}" >"$stdout_file" 2>"$stderr_file"
+    )
+    rc=$?
+    set -e
+
+    stdout_text="$(<"$stdout_file")"
+    if [[ $rc -eq 0 ]] &&
+        grep -q 'PWD=' <<<"$stdout_text" &&
+        grep -q 'Seccomp:' <<<"$stdout_text" &&
+        ! grep -q 'UNEXPECTED_WRITE_OK' <<<"$stdout_text" &&
+        codex_stdout_matches_case "$case_name" "$stdout_text" "$expect_file" "$public_mode" "$private_mode"; then
         return 0
     fi
-    print_fail "$label" "$name"
+
+    {
+        echo "codex sandbox linux/$case_name failed for $suite_label (rc=$rc)"
+        echo '--- stdout ---'
+        cat "$stdout_file" 2>/dev/null || true
+        echo '--- stderr ---'
+        cat "$stderr_file" 2>/dev/null || true
+    } >&2
     return 1
 }
 
-# shellcheck disable=SC2317 # Invoked in background jobs below.
-run_suite() {
+expect_codex_app_server_case() {
     local runner="$1"
-    local label
-    local failures=0
-    label="$(basename "$runner")"
+    local case_name="$2"
+    local helper_case_kind="$3"
+    local script="$4"
+    local expect_file="$5"
+    local public_mode="$6"
+    local private_mode="$7"
+    local json_log="$test_root/${suite_label}.codex-appserver.${case_name}.json"
+    local helper_stderr="$test_root/${suite_label}.codex-appserver.${case_name}.stderr"
+    local response_exit_code=''
+    local response_stdout=''
+    local response_stderr=''
+    local server_stderr=''
+    local rc=0
+    local case_timeout_seconds=''
 
-    if [[ -n "$google_ipv4" ]]; then
-        run_check "$label" 'internet HTTPS reachability without sandbox DNS using --resolve' \
-            expect_connect_resolved "$runner" google.com "$google_ipv4" || failures=1
-    else
-        print_skip "$label" 'internet HTTPS reachability without sandbox DNS using --resolve'
+    case_timeout_seconds="$(codex_case_timeout_seconds "$public_mode" "$private_mode")"
+
+    rm -f "$expect_file" "$json_log" "$helper_stderr"
+
+    set +e
+    APP_RUNNER="$runner" \
+        APP_WORKSPACE="$suite_codex_test_dir" \
+        APP_SCRIPT="$script" \
+        APP_CASE_KIND="$helper_case_kind" \
+        APP_TIMEOUT_SECS="$case_timeout_seconds" \
+        APP_LOG_JSON="$json_log" \
+        APP_CODEX_HOME="$suite_codex_home_dir" \
+        run_with_optional_timeout "$((case_timeout_seconds + 2))" python3 "$app_server_helper" >/dev/null 2>"$helper_stderr"
+    rc=$?
+    set -e
+
+    if [[ -f "$json_log" ]]; then
+        response_exit_code="$(json_get 'commandExecResponse.result.exitCode' "$json_log")"
+        response_stdout="$(json_get 'commandExecResponse.result.stdout' "$json_log")"
+        response_stderr="$(json_get 'commandExecResponse.result.stderr' "$json_log")"
+        server_stderr="$(json_get 'serverStderr' "$json_log")"
     fi
 
-    run_check "$label" 'internet DNS HTTPS reachability for google.com' \
-        expect_connect "$runner" https://google.com || failures=1
-
-    run_check "$label" 'seccomp filter is active' \
-        expect_seccomp_mode "$runner" || failures=1
-
-    run_check "$label" 'user namespace creation is blocked' \
-        expect_userns_blocked "$runner" || failures=1
-
-    if [[ "$have_python3" == '1' ]]; then
-        run_check "$label" 'python getaddrinfo works' \
-            expect_python_getaddrinfo "$runner" || failures=1
-
-        run_check "$label" 'python ssl default context works' \
-            expect_python_ssl "$runner" || failures=1
-
-        run_check "$label" 'python subprocess works' \
-            expect_python_subprocess "$runner" || failures=1
-
-        run_check "$label" 'normal thread creation still works' \
-            expect_thread_creation "$runner" || failures=1
-
-        run_check "$label" 'ptrace is blocked by seccomp' \
-            expect_ptrace_blocked "$runner" || failures=1
-    else
-        print_skip "$label" 'python getaddrinfo works (python3 unavailable)'
-        print_skip "$label" 'python ssl default context works (python3 unavailable)'
-        print_skip "$label" 'python subprocess works (python3 unavailable)'
-        print_skip "$label" 'normal thread creation still works (python3 unavailable)'
-        print_skip "$label" 'ptrace is blocked by seccomp (python3 unavailable)'
+    if [[ $rc -eq 0 ]] &&
+        [[ "$response_exit_code" == '0' ]] &&
+        codex_stdout_matches_case "$case_name" "$response_stdout" "$expect_file" "$public_mode" "$private_mode"; then
+        return 0
     fi
 
-    if [[ "$have_node" == '1' ]]; then
-        run_check "$label" 'node runtime works' \
-            expect_node_runtime "$runner" || failures=1
+    {
+        echo "codex app-server/$case_name failed for $suite_label (rc=$rc exit=${response_exit_code:-})"
+        echo '--- response stdout ---'
+        printf '%s\n' "$response_stdout"
+        echo '--- response stderr ---'
+        printf '%s\n' "$response_stderr"
+        echo '--- server stderr ---'
+        printf '%s\n' "$server_stderr"
+        if [[ -f "$json_log" ]]; then
+            echo '--- app-server record ---'
+            cat "$json_log" 2>/dev/null || true
+        fi
+        echo '--- helper stderr ---'
+        cat "$helper_stderr" 2>/dev/null || true
+    } >&2
+    return 1
+}
 
-        run_check "$label" 'node spawnSync works' \
-            expect_node_spawn_sync "$runner" || failures=1
+print_codex_cli_skips() {
+    local reason="$1"
+    print_skip "codex sandbox linux read-only/restricted works ($reason)"
+    print_skip "codex sandbox linux workspace-write/restricted works ($reason)"
+    print_skip "codex sandbox linux workspace-write/network-enabled works ($reason)"
+}
+
+print_codex_app_server_skips() {
+    local reason="$1"
+    print_skip "codex app-server command/exec read-only/restricted works ($reason)"
+    print_skip "codex app-server command/exec workspace-write/restricted works ($reason)"
+    print_skip "codex app-server command/exec workspace-write/network-enabled works ($reason)"
+    print_skip "codex app-server command/exec external-sandbox/network-enabled works ($reason)"
+}
+
+run_network_checks() {
+    local runner="$1"
+
+    if [[ -n "$GOOGLE_IPV4" ]]; then
+        run_check 'internet HTTPS reachability without sandbox DNS using --resolve' \
+            expect_connect_resolved "$runner" google.com "$GOOGLE_IPV4"
     else
-        print_skip "$label" 'node runtime works (node unavailable)'
-        print_skip "$label" 'node spawnSync works (node unavailable)'
+        print_skip 'internet HTTPS reachability without sandbox DNS using --resolve'
     fi
 
-    if [[ "$have_git" == '1' ]]; then
-        run_check "$label" 'git status works' \
-            expect_git_status "$runner" || failures=1
+    run_check 'internet DNS HTTPS reachability for google.com' \
+        expect_connect "$runner" https://google.com
+}
 
-        run_check "$label" 'git toplevel discovery works' \
-            expect_git_toplevel "$runner" || failures=1
+run_security_checks() {
+    local runner="$1"
+
+    run_check 'seccomp filter is active' \
+        expect_seccomp_mode "$runner"
+
+    run_check 'direct user namespace creation is allowed for codex-compatible nesting' \
+        expect_userns_allowed "$runner"
+
+    if [[ $HOST_HAS_BWRAP -eq 1 ]]; then
+        run_check 'nested bubblewrap user/pid sandbox works' \
+            expect_nested_bwrap_userns "$runner"
+        run_check 'nested bubblewrap user/pid/net sandbox works' \
+            expect_nested_bwrap_userns_net "$runner"
+        run_check 'nested bubblewrap user/pid sandbox with /proc+/dev works' \
+            expect_nested_bwrap_userns_with_dev_proc "$runner"
+        run_check 'nested bubblewrap user/pid/net sandbox with /proc+/dev works' \
+            expect_nested_bwrap_userns_net_with_dev_proc "$runner"
     else
-        print_skip "$label" 'git status works (git unavailable)'
-        print_skip "$label" 'git toplevel discovery works (git unavailable)'
+        print_skip 'nested bubblewrap user/pid sandbox works (bwrap unavailable)'
+        print_skip 'nested bubblewrap user/pid/net sandbox works (bwrap unavailable)'
+        print_skip 'nested bubblewrap user/pid sandbox with /proc+/dev works (bwrap unavailable)'
+        print_skip 'nested bubblewrap user/pid/net sandbox with /proc+/dev works (bwrap unavailable)'
+    fi
+}
+
+run_codex_checks() {
+    local runner="$1"
+
+    local codex_cli_readonly_file="$suite_codex_test_dir/cli-readonly-should-not-exist.txt"
+    local codex_cli_workspace_restricted_file="$suite_codex_test_dir/cli-workspace-restricted.txt"
+    local codex_cli_workspace_enabled_file="$suite_codex_test_dir/cli-workspace-enabled.txt"
+    local codex_app_readonly_file="$suite_codex_test_dir/app-readonly-should-not-exist.txt"
+    local codex_app_workspace_restricted_file="$suite_codex_test_dir/app-workspace-restricted.txt"
+    local codex_app_workspace_enabled_file="$suite_codex_test_dir/app-workspace-enabled.txt"
+    local codex_app_external_enabled_file="$suite_codex_test_dir/app-external-enabled.txt"
+
+    local restricted_private_mode='skip'
+    local enabled_private_mode='skip'
+    local codex_cli_readonly_script
+    local codex_cli_workspace_restricted_script
+    local codex_cli_workspace_enabled_script
+    local codex_app_readonly_script
+    local codex_app_workspace_restricted_script
+    local codex_app_workspace_enabled_script
+    local codex_app_external_enabled_script
+
+    if [[ -n "$private_url" ]]; then
+        restricted_private_mode='deny'
+        if [[ "$suite_label" == 'agentwrap' ]]; then
+            enabled_private_mode='deny'
+        else
+            enabled_private_mode='allow'
+        fi
     fi
 
-    if [[ "$have_script" == '1' ]]; then
-        run_check "$label" 'pty allocation works' \
-            expect_pty_basic "$runner" || failures=1
-    else
-        print_skip "$label" 'pty allocation works (script unavailable)'
+    codex_cli_readonly_script="$(make_codex_probe_script deny deny "$codex_cli_readonly_file" deny "$restricted_private_mode")"
+    codex_cli_workspace_restricted_script="$(make_codex_probe_script allow deny "$codex_cli_workspace_restricted_file" deny "$restricted_private_mode")"
+    codex_cli_workspace_enabled_script="$(make_codex_probe_script allow allow "$codex_cli_workspace_enabled_file" allow "$enabled_private_mode")"
+    codex_app_readonly_script="$(make_codex_probe_script deny deny "$codex_app_readonly_file" deny "$restricted_private_mode")"
+    codex_app_workspace_restricted_script="$(make_codex_probe_script allow deny "$codex_app_workspace_restricted_file" deny "$restricted_private_mode")"
+    codex_app_workspace_enabled_script="$(make_codex_probe_script allow allow "$codex_app_workspace_enabled_file" allow "$enabled_private_mode")"
+    codex_app_external_enabled_script="$(make_codex_probe_script allow allow "$codex_app_external_enabled_file" allow "$enabled_private_mode")"
+
+    if ! runner_has_cmd "$runner" codex; then
+        print_codex_cli_skips 'codex unavailable'
+        print_codex_app_server_skips 'codex unavailable'
+        return 0
     fi
 
-    run_check "$label" 'hidden host path is not visible' \
-        "$runner" bash -lc "[ ! -e \"\$1\" ]" _ "$hidden_host_path" || failures=1
+    if runner_has_codex_sandbox_linux "$runner"; then
+        run_check 'codex sandbox linux read-only/restricted works' \
+            expect_codex_cli_case "$runner" readonly_restricted "$codex_cli_readonly_script" "$codex_cli_readonly_file" deny "$restricted_private_mode" \
+            'sandbox_mode=read-only'
 
-    run_check "$label" 'workspace bind accepts writes' \
-        "$runner" bash -lc "printf ok > \"\$1\"" _ "$workspace_rw_file" || failures=1
-    run_check "$label" 'workspace bind write is visible on host' \
-        test -f "$workspace_rw_file" || failures=1
+        run_check 'codex sandbox linux workspace-write/restricted works' \
+            expect_codex_cli_case "$runner" workspace_restricted "$codex_cli_workspace_restricted_script" "$codex_cli_workspace_restricted_file" deny "$restricted_private_mode"
+
+        run_check 'codex sandbox linux workspace-write/network-enabled works' \
+            expect_codex_cli_case "$runner" workspace_enabled "$codex_cli_workspace_enabled_script" "$codex_cli_workspace_enabled_file" allow "$enabled_private_mode" \
+            'sandbox_workspace_write.network_access=true'
+    else
+        print_codex_cli_skips 'codex sandbox linux unavailable'
+    fi
+
+    if runner_has_codex_app_server "$runner"; then
+        run_check 'codex app-server command/exec read-only/restricted works' \
+            expect_codex_app_server_case "$runner" readonly_restricted readonly_restricted "$codex_app_readonly_script" "$codex_app_readonly_file" deny "$restricted_private_mode"
+
+        run_check 'codex app-server command/exec workspace-write/restricted works' \
+            expect_codex_app_server_case "$runner" workspace_restricted workspace_restricted "$codex_app_workspace_restricted_script" "$codex_app_workspace_restricted_file" deny "$restricted_private_mode"
+
+        run_check 'codex app-server command/exec workspace-write/network-enabled works' \
+            expect_codex_app_server_case "$runner" workspace_enabled workspace_enabled "$codex_app_workspace_enabled_script" "$codex_app_workspace_enabled_file" allow "$enabled_private_mode"
+
+        run_check 'codex app-server command/exec external-sandbox/network-enabled works' \
+            expect_codex_app_server_case "$runner" external_enabled external_enabled "$codex_app_external_enabled_script" "$codex_app_external_enabled_file" allow "$enabled_private_mode"
+    else
+        print_codex_app_server_skips 'codex app-server unavailable'
+    fi
+}
+
+run_runtime_checks() {
+    local runner="$1"
+
+    run_check 'python getaddrinfo works' \
+        expect_python_getaddrinfo "$runner"
+    run_check 'python ssl default context works' \
+        expect_python_ssl "$runner"
+    run_check 'python subprocess works' \
+        expect_python_subprocess "$runner"
+    run_check 'normal thread creation still works' \
+        expect_thread_creation "$runner"
+    run_check 'ptrace is blocked by seccomp' \
+        expect_ptrace_blocked "$runner"
+
+    if [[ $HOST_HAS_NODE -eq 1 ]]; then
+        run_check 'node runtime works' \
+            expect_node_runtime "$runner"
+        run_check 'node spawnSync works' \
+            expect_node_spawn_sync "$runner"
+    else
+        print_skip 'node runtime works (node unavailable)'
+        print_skip 'node spawnSync works (node unavailable)'
+    fi
+
+    if [[ $HOST_HAS_GIT -eq 1 ]]; then
+        run_check 'git status works' \
+            expect_git_status "$runner"
+        run_check 'git toplevel discovery works' \
+            expect_git_toplevel "$runner"
+    else
+        print_skip 'git status works (git unavailable)'
+        print_skip 'git toplevel discovery works (git unavailable)'
+    fi
+
+    if [[ $HOST_HAS_SCRIPT -eq 1 ]]; then
+        run_check 'pty allocation works' \
+            expect_pty_basic "$runner"
+    else
+        print_skip 'pty allocation works (script unavailable)'
+    fi
+}
+
+run_bind_checks() {
+    local runner="$1"
+    local workspace_rw_file="$2"
+    local extra_rw_file="$3"
+    local extra_ro_file="$4"
+
+    run_check 'hidden host path is not visible' \
+        "$runner" bash -lc '[ ! -e "$1" ]' _ "$hidden_host_path"
+
+    run_check 'workspace bind accepts writes' \
+        "$runner" bash -lc 'printf ok > "$1"' _ "$workspace_rw_file"
+    run_check 'workspace bind write is visible on host' \
+        test -f "$workspace_rw_file"
     rm -f "$workspace_rw_file"
 
-    run_check "$label" 'configured extra RW path accepts writes' \
-        "$runner" bash -lc "printf ok > \"\$1\"" _ "$extra_rw_file" || failures=1
-    run_check "$label" 'configured extra RW write is visible on host' \
-        test -f "$extra_rw_file" || failures=1
+    run_check 'configured extra RW path accepts writes' \
+        "$runner" bash -lc 'printf ok > "$1"' _ "$extra_rw_file"
+    run_check 'configured extra RW write is visible on host' \
+        test -f "$extra_rw_file"
     rm -f "$extra_rw_file"
 
-    if "$runner" bash -lc "printf no > \"\$1\"" _ "$extra_ro_file" >/dev/null 2>&1; then
-        print_fail "$label" 'configured extra RO path unexpectedly writable'
-        failures=1
+    if "$runner" bash -lc 'printf no > "$1"' _ "$extra_ro_file" >/dev/null 2>&1; then
+        print_fail 'configured extra RO path unexpectedly writable'
     else
-        run_check "$label" 'configured extra RO path blocks writes' \
-            test ! -e "$extra_ro_file" || failures=1
+        run_check 'configured extra RO path blocks writes' \
+            test ! -e "$extra_ro_file"
     fi
+}
+
+run_private_url_checks() {
+    local runner="$1"
 
     if [[ -z "$private_url" ]]; then
-        print_skip "$label" 'private URL checks (provide http://... or https://... to enable)'
-    elif [[ "$label" == "agentwrap" ]]; then
-        run_check "$label" 'private URL is blocked by network isolation' \
-            expect_block "$runner" "$private_url" || failures=1
+        print_skip 'private URL checks (provide http://... or https://... to enable)'
+    elif [[ "$suite_label" == 'agentwrap' ]]; then
+        run_check 'private URL is blocked by network isolation' \
+            expect_block "$runner" "$private_url"
     else
-        run_check "$label" 'private URL is reachable without network isolation' \
-            expect_connect "$runner" "$private_url" || failures=1
+        run_check 'private URL is reachable without network isolation' \
+            expect_connect "$runner" "$private_url"
+    fi
+}
+
+suite_codex_test_dir=''
+suite_codex_home_dir=''
+
+run_suite() {
+    trap - EXIT
+
+    local runner="$1"
+    local suite_root=''
+    local workspace_rw_file="$PWD/.agentwrap-test-${runner}-rw-$$"
+    local extra_rw_file="$rw_dir/.agentwrap-test-${runner}-rw-$$"
+    local extra_ro_file="$ro_dir/.agentwrap-test-${runner}-ro-$$"
+
+    suite_label="$runner"
+    suite_pass=0
+    suite_fail=0
+    suite_skip=0
+    suite_counts_file="$test_root/$suite_label.counts"
+    suite_root="$test_root/$suite_label"
+    suite_codex_test_dir="$suite_root/codex-workspace"
+    suite_codex_home_dir="$codex_home_root/$suite_label"
+
+    rm -f "$suite_counts_file" "$workspace_rw_file" "$extra_rw_file" "$extra_ro_file"
+    rm -rf "$suite_root" "$suite_codex_home_dir"
+    mkdir -p "$suite_codex_test_dir" "$suite_codex_home_dir"
+
+    run_network_checks "$runner"
+    run_security_checks "$runner"
+    run_codex_checks "$runner"
+    run_runtime_checks "$runner"
+    run_bind_checks "$runner" "$workspace_rw_file" "$extra_rw_file" "$extra_ro_file"
+    run_private_url_checks "$runner"
+
+    write_suite_counts
+    [[ $suite_fail -eq 0 ]]
+}
+
+read_suite_counts() {
+    local file="$1"
+    local pass=0
+    local fail=0
+    local skip=0
+
+    if [[ -f "$file" ]]; then
+        read -r pass fail skip <"$file"
     fi
 
-    return "$failures"
+    printf '%s %s %s\n' "$pass" "$fail" "$skip"
+}
+
+print_summary_line() {
+    local label="$1"
+    local pass="$2"
+    local fail="$3"
+    local skip="$4"
+    local note="${5:-}"
+
+    printf '[summary] %-16s %sPASS%s %s  %sFAIL%s %s  %sSKIP%s %s' \
+        "$label" \
+        "$color_pass" "$color_reset" "$pass" \
+        "$color_fail" "$color_reset" "$fail" \
+        "$color_skip" "$color_reset" "$skip"
+
+    if [[ -n "$note" ]]; then
+        printf '  %s' "$note"
+    fi
+
+    printf '\n'
 }
 
 run_suite agentwrap &
@@ -387,7 +1088,40 @@ run_suite agentwrap-bwrap &
 pid_bwrap=$!
 
 status=0
-wait "$pid_agentwrap" || status=1
-wait "$pid_bwrap" || status=1
+agentwrap_status=0
+agentwrap_bwrap_status=0
+
+if ! wait "$pid_agentwrap"; then
+    status=1
+    agentwrap_status=1
+fi
+
+if ! wait "$pid_bwrap"; then
+    status=1
+    agentwrap_bwrap_status=1
+fi
+
+read -r agentwrap_pass agentwrap_fail agentwrap_skip < <(read_suite_counts "$test_root/agentwrap.counts")
+read -r bwrap_pass bwrap_fail bwrap_skip < <(read_suite_counts "$test_root/agentwrap-bwrap.counts")
+
+agentwrap_note=''
+bwrap_note=''
+if [[ $agentwrap_status -ne 0 && ! -f "$test_root/agentwrap.counts" ]]; then
+    agentwrap_fail=1
+    agentwrap_note='(suite exited before writing counts)'
+fi
+if [[ $agentwrap_bwrap_status -ne 0 && ! -f "$test_root/agentwrap-bwrap.counts" ]]; then
+    bwrap_fail=1
+    bwrap_note='(suite exited before writing counts)'
+fi
+
+total_pass=$((agentwrap_pass + bwrap_pass))
+total_fail=$((agentwrap_fail + bwrap_fail))
+total_skip=$((agentwrap_skip + bwrap_skip))
+
+printf '\n'
+print_summary_line agentwrap "$agentwrap_pass" "$agentwrap_fail" "$agentwrap_skip" "$agentwrap_note"
+print_summary_line agentwrap-bwrap "$bwrap_pass" "$bwrap_fail" "$bwrap_skip" "$bwrap_note"
+print_summary_line total "$total_pass" "$total_fail" "$total_skip"
 
 exit "$status"
