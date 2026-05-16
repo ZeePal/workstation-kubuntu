@@ -137,7 +137,6 @@ bwrap_args=(
     --unshare-all
     --share-net
     --unshare-user
-    --disable-userns
     --die-with-parent
     --new-session
     --ro-bind /usr /usr

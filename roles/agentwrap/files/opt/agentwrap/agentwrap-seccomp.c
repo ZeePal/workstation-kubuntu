@@ -29,6 +29,15 @@
 
 #define ARRAY_LEN(x) (sizeof(x) / sizeof((x)[0]))
 
+static const uint64_t CLONE_NAMESPACE_MASK =
+    CLONE_NEWCGROUP | CLONE_NEWIPC | CLONE_NEWNET | CLONE_NEWNS |
+    CLONE_NEWPID | CLONE_NEWUSER | CLONE_NEWUTS;
+
+static const uint64_t BWRAP_CLONE_USER_PID =
+    CLONE_NEWNS | CLONE_NEWUSER | CLONE_NEWPID;
+static const uint64_t BWRAP_CLONE_USER_PID_NET =
+    CLONE_NEWNS | CLONE_NEWUSER | CLONE_NEWPID | CLONE_NEWNET;
+
 static int allow_by_name(scmp_filter_ctx ctx, const char *syscall_name) {
   int syscall_nr = seccomp_syscall_resolve_name(syscall_name);
 
@@ -52,13 +61,16 @@ static int allow_all_by_name(scmp_filter_ctx ctx, const char *const *syscalls,
   return 0;
 }
 
-static int allow_clone_non_namespace(scmp_filter_ctx ctx) {
-  const uint64_t namespace_mask = CLONE_NEWCGROUP | CLONE_NEWIPC | CLONE_NEWNET |
-                                  CLONE_NEWNS | CLONE_NEWPID | CLONE_NEWUSER |
-                                  CLONE_NEWUTS;
-
+static int allow_clone_with_namespace_mask(scmp_filter_ctx ctx,
+                                           uint64_t namespace_bits) {
   return seccomp_rule_add(ctx, SCMP_ACT_ALLOW, SCMP_SYS(clone), 1,
-                          SCMP_A0_64(SCMP_CMP_MASKED_EQ, namespace_mask, 0));
+                          SCMP_A0_64(SCMP_CMP_MASKED_EQ, CLONE_NAMESPACE_MASK,
+                                     namespace_bits));
+}
+
+static int allow_unshare_exact(scmp_filter_ctx ctx, uint64_t namespace_bits) {
+  return seccomp_rule_add(ctx, SCMP_ACT_ALLOW, SCMP_SYS(unshare), 1,
+                          SCMP_A0_64(SCMP_CMP_EQ, namespace_bits));
 }
 
 static int allow_socket_non_vsock(scmp_filter_ctx ctx) {
@@ -72,6 +84,38 @@ static int allow_socket_non_vsock(scmp_filter_ctx ctx) {
                           SCMP_A0_64(SCMP_CMP_NE, AF_VSOCK));
 }
 
+static int install_bwrap_nested_rules(scmp_filter_ctx ctx) {
+  static const char *const extra_syscalls[] = {
+      "mount",
+      "pivot_root",
+      "umount2",
+  };
+
+  if (allow_all_by_name(ctx, extra_syscalls, ARRAY_LEN(extra_syscalls)) != 0) {
+    return -1;
+  }
+
+  if (allow_clone_with_namespace_mask(ctx, 0) != 0) {
+    return -1;
+  }
+
+  if (allow_clone_with_namespace_mask(ctx, BWRAP_CLONE_USER_PID) != 0) {
+    return -1;
+  }
+
+  if (allow_clone_with_namespace_mask(ctx, BWRAP_CLONE_USER_PID_NET) != 0) {
+    return -1;
+  }
+
+  /* Upstream bwrap does a second `unshare(CLONE_NEWUSER)` in the `/dev`
+   * setup path so it can mount devpts as uid 0 before mapping back.
+   */
+  if (allow_unshare_exact(ctx, CLONE_NEWUSER) != 0) {
+    return -1;
+  }
+
+  return 0;
+}
 static int install_rules(scmp_filter_ctx ctx) {
   static const char *const syscalls[] = {
       "accept",
@@ -393,7 +437,6 @@ static int install_rules(scmp_filter_ctx ctx) {
       "write",
       "writev",
   };
-
   if (seccomp_attr_set(ctx, SCMP_FLTATR_CTL_NNP, 0) != 0) {
     return -1;
   }
@@ -406,7 +449,7 @@ static int install_rules(scmp_filter_ctx ctx) {
     return -1;
   }
 
-  if (allow_clone_non_namespace(ctx) != 0) {
+  if (install_bwrap_nested_rules(ctx) != 0) {
     return -1;
   }
 

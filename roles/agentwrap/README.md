@@ -48,7 +48,7 @@ agentwrap-bwrap
            - read-only system paths
            - writable workspace + selected state dirs only
            - environment stripped to an allowlist
-           - seccomp filter (whitelist syscalls)
+           - seccomp filter that still permits inner `bwrap`/Codex sandbox setup
 ```
 
 ## Components
@@ -65,7 +65,7 @@ agentwrap-bwrap
 - `files/etc/systemd/resolved.conf.d/agentwrap.conf` and `files/etc/netns/agentwrap-egress/resolv.conf`: ensure DNS from the namespace resolves via the host-side listener
 - `files/etc/sudoers.d/agentwrap`: constrains the `sudo` entrypoint and resets environment by default
 - `files/opt/agentwrap/bin/agentwrap-check`: root-side verification of namespace and nftables state
-- `files/opt/agentwrap/bin/agentwrap-test`: behavioral checks for reachability, path visibility, and write permissions
+- `files/opt/agentwrap/bin/agentwrap-test`: behavioral checks for reachability, path visibility, write permissions, and optional nested Codex CLI/app-server probes when `codex` is available
 
 ## Protection Layers
 - `sudoers` restricts elevation to one wrapper entrypoint and resets the environment first.
@@ -76,6 +76,7 @@ agentwrap-bwrap
 - `bubblewrap` makes the workspace the primary writable surface; system paths are read-only and most of `$HOME` is synthetic/empty.
 - Synthetic `passwd`/`group` files expose only `root`, the calling user/group, and `nobody`/`nogroup` when present.
 - The seccomp layer uses a baseline container-style allowlist while still permitting typical agent workloads.
+- The seccomp layer keeps the broad baseline allowlist and additionally permits the small set of extra operations inner `bwrap`/Codex need to set up their own sandbox (mount, pivot_root, umount2, the specific namespace-clone combinations used by those inner launches, and `unshare(CLONE_NEWUSER)` for the `/dev`/devpts setup path used by upstream `bwrap`).
 - Final environment stripping limits what secrets and host context survive into the sandbox.
 
 ## Operational Notes
