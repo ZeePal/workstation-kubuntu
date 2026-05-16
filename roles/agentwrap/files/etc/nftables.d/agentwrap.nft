@@ -1,8 +1,17 @@
+define agentwrap_allowed_uplinks = {
+    "wlp58s0",
+}
+
+define agentwrap_host_interfaces = {
+    "awhost0",
+}
+
 table inet filter {
-    set agentwrap_allowed_uplinks { # REMINDER: duplicated for agentwrap-nat table at bottom of file
-        type ifname
+    set agentwrap_cidrs {
+        type ipv4_addr
+        flags interval
         elements = {
-            "wlp58s0",
+            169.254.100.0/30,
         }
     }
 
@@ -44,12 +53,12 @@ table inet filter {
         elements = {
             0.0.0.0/8,        # RFC 1122 "this network"
             10.0.0.0/8,       # RFC 1918 private-use
-            100.64.0.0/10,    # RFC 6598 carrier-grade NAT / shared address space
-            127.0.0.0/8,      # RFC 1122 loopback
-            169.254.0.0/16,   # RFC 3927 link-local
             172.16.0.0/12,    # RFC 1918 private-use
-            192.0.2.0/24,     # RFC 5737 TEST-NET-1 documentation
             192.168.0.0/16,   # RFC 1918 private-use
+            127.0.0.0/8,      # RFC 1122 loopback
+            100.64.0.0/10,    # RFC 6598 carrier-grade NAT / shared address space
+            169.254.0.0/16,   # RFC 3927 link-local
+            192.0.2.0/24,     # RFC 5737 TEST-NET-1 documentation
             198.18.0.0/15,    # RFC 2544 benchmarking
             198.51.100.0/24,  # RFC 5737 TEST-NET-2 documentation
             203.0.113.0/24,   # RFC 5737 TEST-NET-3 documentation
@@ -75,47 +84,66 @@ table inet filter {
         }
     }
 
+    set agentwrap_allowed_uplinks {
+        type ifname
+        elements = $agentwrap_allowed_uplinks
+    }
+
+    set agentwrap_host_interfaces {
+        type ifname
+        elements = $agentwrap_host_interfaces
+    }
+
+
     chain input {
-        iifname "awhost0" jump agentwrap_input comment "agentwrap host-input guard"
+        iifname @agentwrap_host_interfaces jump agentwrap_input comment "agentwrap host-input guard"
+        ip saddr @agentwrap_cidrs drop comment "agentwrap cidrs like localhost v2"
     }
 
     chain forward {
-        iifname "awhost0" jump agentwrap_forward comment "agentwrap egress guard"
-        oifname "awhost0" jump agentwrap_forward comment "agentwrap return guard"
+        iifname @agentwrap_host_interfaces jump agentwrap_forward comment "agentwrap egress guard"
+        oifname @agentwrap_host_interfaces jump agentwrap_forward comment "agentwrap return guard"
+        ip saddr @agentwrap_cidrs drop comment "agentwrap cidrs like localhost v2"
+        ip daddr @agentwrap_cidrs drop comment "agentwrap cidrs like localhost v2"
     }
+
+    chain output {
+        oifname != @agentwrap_host_interfaces ip daddr @agentwrap_cidrs drop comment "agentwrap cidrs like localhost v2"
+    }
+
 
     chain agentwrap_input {
         meta l4proto tcp tcp dport @agentwrap_allowed_host_tcp_ports counter accept
         meta l4proto udp udp dport @agentwrap_allowed_host_udp_ports counter accept
-        ip daddr @agentwrap_blocked_ipv4 counter drop
-        ip6 daddr @agentwrap_blocked_ipv6 counter drop
         counter drop
     }
 
     chain agentwrap_forward {
         ct state established,related counter accept
-        iifname "awhost0" meta l4proto tcp ip daddr . tcp dport @agentwrap_allowed_private_tcp_ipv4 counter accept
-        iifname "awhost0" meta l4proto udp ip daddr . udp dport @agentwrap_allowed_private_udp_ipv4 counter accept
-        iifname "awhost0" ip daddr @agentwrap_blocked_ipv4 counter drop
-        iifname "awhost0" ip6 daddr @agentwrap_blocked_ipv6 counter drop
-        # Sandboxed traffic may leave only through explicitly approved uplinks.
-        iifname "awhost0" oifname @agentwrap_allowed_uplinks counter accept
-        oifname "awhost0" counter drop
-        iifname "awhost0" counter drop
+        iifname @agentwrap_host_interfaces meta l4proto tcp ip daddr . tcp dport @agentwrap_allowed_private_tcp_ipv4 counter accept
+        iifname @agentwrap_host_interfaces meta l4proto udp ip daddr . udp dport @agentwrap_allowed_private_udp_ipv4 counter accept
+        iifname @agentwrap_host_interfaces ip daddr @agentwrap_blocked_ipv4 counter drop
+        iifname @agentwrap_host_interfaces ip6 daddr @agentwrap_blocked_ipv6 counter drop
+        # Sandboxed traffic may leave only through explicitly approved uplinks
+        iifname @agentwrap_host_interfaces oifname @agentwrap_allowed_uplinks counter accept
+        counter drop
     }
 }
 
 table ip agentwrap_nat {
     set agentwrap_allowed_uplinks {
         type ifname
-        elements = {
-            "wlp58s0",
-        }
+        elements = $agentwrap_allowed_uplinks
+    }
+
+    set agentwrap_host_interfaces {
+        type ifname
+        elements = $agentwrap_host_interfaces
     }
 
     chain postrouting {
         type nat hook postrouting priority srcnat; policy accept;
 
-        iifname "awhost0" oifname @agentwrap_allowed_uplinks counter masquerade
+        iifname @agentwrap_host_interfaces oifname @agentwrap_allowed_uplinks counter masquerade
     }
 }
