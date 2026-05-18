@@ -23,7 +23,7 @@
 - name: Install the NodeSource apt repository
   apt_repository:
     state: present
-    repo: deb [arch=amd64 signed-by=/etc/apt/keyrings/nodesource.gpg] https://deb.nodesource.com/node_21.x nodistro main
+    repo: deb [arch=amd64 signed-by=/etc/apt/keyrings/nodesource.gpg] https://deb.nodesource.com/node_24.x nodistro main
     filename: nodesource
     update_cache: false
   notify: Refresh apt
