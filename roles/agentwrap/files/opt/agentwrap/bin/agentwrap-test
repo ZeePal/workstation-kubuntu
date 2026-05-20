@@ -673,37 +673,40 @@ expect_codex_cli_case() {
     local expect_file="$4"
     local public_mode="$5"
     local private_mode="$6"
-    shift 6
 
-    local overrides=("$@")
     local stdout_file="$test_root/${suite_label}.codex-cli.${case_name}.stdout"
     local stderr_file="$test_root/${suite_label}.codex-cli.${case_name}.stderr"
     local stdout_text=''
     local rc=0
     local case_timeout_seconds=''
     local cmd=("$runner" env "CODEX_HOME=$suite_codex_home_dir" codex)
-    local override
 
     case_timeout_seconds="$(codex_case_timeout_seconds "$public_mode" "$private_mode")"
 
     rm -f "$expect_file" "$stdout_file" "$stderr_file"
 
-    for override in "${overrides[@]}"; do
-        cmd+=(-c "$override")
-    done
-
     case "$case_name" in
     readonly_restricted)
-        cmd+=(sandbox linux -- bash -lc "$script")
+        cmd+=(-c 'sandbox_mode=read-only')
         ;;
-    workspace_restricted | workspace_enabled)
-        cmd+=(-c 'sandbox_mode="workspace-write"' sandbox linux -- bash -lc "$script")
+    workspace_restricted)
+        cmd+=(-c 'sandbox_mode="workspace-write"')
+        ;;
+    workspace_enabled)
+        cmd+=(
+            -c 'sandbox_mode="workspace-write"'
+            -c 'sandbox_workspace_write.network_access=true'
+            -c 'features.network_proxy=true'
+            -c 'network_proxy.domains={ "google.com" = "allow", "www.google.com" = "deny" }'
+        )
         ;;
     *)
         echo "unknown codex cli case: $case_name" >&2
         return 1
         ;;
     esac
+
+    cmd+=(sandbox linux -- bash -lc "$script")
 
     set +e
     (
@@ -897,15 +900,13 @@ run_codex_checks() {
 
     if runner_has_codex_sandbox_linux "$runner"; then
         run_check 'codex sandbox linux read-only/restricted works' \
-            expect_codex_cli_case "$runner" readonly_restricted "$codex_cli_readonly_script" "$codex_cli_readonly_file" deny "$restricted_private_mode" \
-            'sandbox_mode=read-only'
+            expect_codex_cli_case "$runner" readonly_restricted "$codex_cli_readonly_script" "$codex_cli_readonly_file" deny "$restricted_private_mode"
 
         run_check 'codex sandbox linux workspace-write/restricted works' \
             expect_codex_cli_case "$runner" workspace_restricted "$codex_cli_workspace_restricted_script" "$codex_cli_workspace_restricted_file" deny "$restricted_private_mode"
 
         run_check 'codex sandbox linux workspace-write/network-enabled works' \
-            expect_codex_cli_case "$runner" workspace_enabled "$codex_cli_workspace_enabled_script" "$codex_cli_workspace_enabled_file" allow "$enabled_private_mode" \
-            'sandbox_workspace_write.network_access=true'
+            expect_codex_cli_case "$runner" workspace_enabled "$codex_cli_workspace_enabled_script" "$codex_cli_workspace_enabled_file" allow "$enabled_private_mode"
     else
         print_codex_cli_skips 'codex sandbox linux unavailable'
     fi
