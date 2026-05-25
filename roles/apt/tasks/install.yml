@@ -107,6 +107,7 @@
       - nftables
       - hyperfine
       - libseccomp-dev
+      - cloc
 
       # KDE Notification Language Support
       - gimp-help-en

@@ -1,0 +1,16 @@
+- name: Check if workstation-kubuntu repository already exists
+  stat:
+    path: "{{ HOME }}/git/ZeePal/workstation-kubuntu/.git"
+  register: stat_workstation_kubuntu_repo
+
+- name: Get workstation-kubuntu origin URL
+  command: git -C "{{ HOME }}/git/ZeePal/workstation-kubuntu" remote get-url origin
+  register: workstation_kubuntu_origin_url
+  changed_when: false
+  when: stat_workstation_kubuntu_repo.stat.exists
+
+- name: Switch workstation-kubuntu origin to SSH
+  command: git -C "{{ HOME }}/git/ZeePal/workstation-kubuntu" remote set-url origin git@github.com:ZeePal/workstation-kubuntu.git
+  when:
+    - stat_workstation_kubuntu_repo.stat.exists
+    - workstation_kubuntu_origin_url.stdout != 'git@github.com:ZeePal/workstation-kubuntu.git'
