@@ -21,10 +21,11 @@
   command: git -C "{{ HOME }}/git/ZeePal/pi-sandbox" remote get-url origin
   register: pi_sandbox_origin_url
   changed_when: false
+  when: lookup('ansible.builtin.env', 'ZP_WORKSTATION') != 'work'
 
 - name: Switch pi-sandbox origin to SSH
   command: git -C "{{ HOME }}/git/ZeePal/pi-sandbox" remote set-url origin git@github.com:ZeePal/pi-sandbox.git
-  when: pi_sandbox_origin_url.stdout != 'git@github.com:ZeePal/pi-sandbox.git'
+  when: lookup('ansible.builtin.env', 'ZP_WORKSTATION') != 'work' and pi_sandbox_origin_url.stdout != 'git@github.com:ZeePal/pi-sandbox.git'
 
 - name: Install pi-sandbox
   command: "{{ HOME }}/.cargo/bin/cargo install --locked --path {{ HOME }}/git/ZeePal/pi-sandbox"

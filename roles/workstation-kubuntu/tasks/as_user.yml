@@ -7,10 +7,8 @@
   command: git -C "{{ HOME }}/git/ZeePal/workstation-kubuntu" remote get-url origin
   register: workstation_kubuntu_origin_url
   changed_when: false
-  when: stat_workstation_kubuntu_repo.stat.exists
+  when: stat_workstation_kubuntu_repo.stat.exists and lookup('ansible.builtin.env', 'ZP_WORKSTATION') != 'work'
 
 - name: Switch workstation-kubuntu origin to SSH
   command: git -C "{{ HOME }}/git/ZeePal/workstation-kubuntu" remote set-url origin git@github.com:ZeePal/workstation-kubuntu.git
-  when:
-    - stat_workstation_kubuntu_repo.stat.exists
-    - workstation_kubuntu_origin_url.stdout != 'git@github.com:ZeePal/workstation-kubuntu.git'
+  when: stat_workstation_kubuntu_repo.stat.exists and lookup('ansible.builtin.env', 'ZP_WORKSTATION') != 'work' and workstation_kubuntu_origin_url.stdout != 'git@github.com:ZeePal/workstation-kubuntu.git'

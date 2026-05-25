@@ -1,9 +1,28 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+WORK_WORKSTATION_MARKER="$HOME/.config/ZeePal/work"
 GIT_FOLDER=~/git/ZeePal
 REPO=https://github.com/ZeePal/workstation-kubuntu.git
 REPO_NAME="$(basename -s .git "$REPO")"
+
+if [ "$#" -gt 1 ]; then
+    echo "ERROR: expected zero args, or a single arg of 'work'" >&2
+    exit 1
+fi
+
+case "${1-}" in
+"")
+    ;;
+work)
+    mkdir -p "$(dirname "$WORK_WORKSTATION_MARKER")"
+    touch "$WORK_WORKSTATION_MARKER"
+    ;;
+*)
+    echo "ERROR: invalid bootstrap mode '$1' (expected no arg or 'work')" >&2
+    exit 1
+    ;;
+esac
 
 echo "Installing install dependencys..."
 sudo apt update
