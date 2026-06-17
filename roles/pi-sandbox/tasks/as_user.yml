@@ -27,6 +27,17 @@
   command: git -C "{{ HOME }}/git/ZeePal/pi-sandbox" remote set-url origin git@github.com:ZeePal/pi-sandbox.git
   when: lookup('ansible.builtin.env', 'ZP_WORKSTATION') != 'work' and pi_sandbox_origin_url.stdout != 'git@github.com:ZeePal/pi-sandbox.git'
 
+- name: Check if pi-sandbox Codex vendor checkout exists
+  stat:
+    path: "{{ HOME }}/git/ZeePal/pi-sandbox/vendor/openai/codex"
+  register: stat_pi_sandbox_codex_vendor
+
+- name: Prepare pi-sandbox Codex vendor checkout
+  command: "{{ HOME }}/git/ZeePal/pi-sandbox/scripts/prepare_codex_vendor"
+  when: not stat_pi_sandbox_codex_vendor.stat.exists
+  changed_when: true
+  diff: false
+
 - name: Install pi-sandbox
   command: "{{ HOME }}/.cargo/bin/cargo install --locked --path {{ HOME }}/git/ZeePal/pi-sandbox"
   args:
