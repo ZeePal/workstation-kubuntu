@@ -2,3 +2,4 @@
   command: go install "{{ item }}"
   with_items:
     - github.com/aquasecurity/tfsec/cmd/tfsec@latest
+    - github.com/mikefarah/yq/v4@latest
