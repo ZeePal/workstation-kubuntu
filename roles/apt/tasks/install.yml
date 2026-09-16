@@ -18,6 +18,7 @@
       - python3-botocore
       - python3-cryptography
       - python3-pandas
+      - python3-pytest
       - python3-requests
       - python3-yaml
       - python3-jmespath
