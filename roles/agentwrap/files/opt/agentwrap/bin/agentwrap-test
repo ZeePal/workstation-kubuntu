@@ -336,6 +336,12 @@ expect_seccomp_mode() {
     "$runner" bash -lc "grep -Eq '^Seccomp:[[:space:]]+2$' /proc/self/status"
 }
 
+expect_agentwrap_sandbox_contract() {
+    local runner="$1"
+    # shellcheck disable=SC2016 # AGENTWRAP_SANDBOX must expand inside the sandbox.
+    AGENTWRAP_SANDBOX=caller-value "$runner" bash -lc '[[ "$AGENTWRAP_SANDBOX" == true ]]'
+}
+
 expect_ptrace_blocked() {
     local runner="$1"
     local result
@@ -830,6 +836,9 @@ run_network_checks() {
 
 run_security_checks() {
     local runner="$1"
+
+    run_check 'trusted outer IPC sandbox contract is set and caller input is discarded' \
+        expect_agentwrap_sandbox_contract "$runner"
 
     run_check 'seccomp filter is active' \
         expect_seccomp_mode "$runner"

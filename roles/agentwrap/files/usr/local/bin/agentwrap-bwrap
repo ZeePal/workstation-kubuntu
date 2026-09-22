@@ -162,6 +162,7 @@ bwrap_args=(
     --dir "$HOME"
     --chdir "$PWD"
     --setenv PATH "$AGENTWRAP_PATH"
+    --setenv AGENTWRAP_SANDBOX true
     --seccomp "$seccomp_fd"
 )
 
