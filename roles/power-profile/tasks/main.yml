@@ -1,0 +1,25 @@
+- name: Install power profile switcher
+  copy:
+    src: switch-power-profile
+    dest: /usr/local/sbin/switch-power-profile
+    owner: root
+    group: root
+    mode: u=rwx,go=rx
+  register: power_profile_switcher
+
+- name: Install power profile udev rule
+  copy:
+    src: 90-power-profile.rules
+    dest: /etc/udev/rules.d/90-power-profile.rules
+    owner: root
+    group: root
+    mode: u=rw,go=r
+  register: power_profile_udev_rule
+
+- name: Reload udev rules
+  command: udevadm control --reload-rules
+  when: power_profile_udev_rule.changed
+
+- name: Set initial power profile
+  command: /usr/local/sbin/switch-power-profile
+  when: power_profile_switcher.changed

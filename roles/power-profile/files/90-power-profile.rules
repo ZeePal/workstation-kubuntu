@@ -1,0 +1,1 @@
+SUBSYSTEM=="power_supply", KERNEL=="AC", ACTION=="change", RUN+="/usr/local/sbin/switch-power-profile"

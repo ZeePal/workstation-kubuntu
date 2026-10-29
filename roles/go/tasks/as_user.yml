@@ -3,3 +3,4 @@
   with_items:
     - github.com/aquasecurity/tfsec/cmd/tfsec@latest
     - github.com/mikefarah/yq/v4@latest
+    - github.com/rhysd/actionlint/cmd/actionlint@latest

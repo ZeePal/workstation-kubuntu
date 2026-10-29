@@ -34,8 +34,7 @@
       - software-properties-common
       - ppa-purge
       - powertop
-      - tlp
-      - tlp-rdw
+      - power-profiles-daemon
       - gpg
       - golang-go
       - uidmap

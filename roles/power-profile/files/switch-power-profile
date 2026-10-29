@@ -1,0 +1,8 @@
+#!/bin/sh
+set -eu
+
+if [ "$(cat /sys/class/power_supply/AC/online)" = "1" ]; then
+    exec /usr/bin/powerprofilesctl set performance
+fi
+
+exec /usr/bin/powerprofilesctl set power-saver
