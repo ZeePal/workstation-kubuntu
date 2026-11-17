@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# ShellCheck cannot trace callbacks dispatched through run_check and background suites.
+# shellcheck disable=SC2317
 set -euo pipefail
 
 # shellcheck disable=SC1091 # Config file exists only on installed target path.
@@ -340,6 +342,54 @@ expect_agentwrap_sandbox_contract() {
     local runner="$1"
     # shellcheck disable=SC2016 # AGENTWRAP_SANDBOX must expand inside the sandbox.
     AGENTWRAP_SANDBOX=caller-value "$runner" bash -lc '[[ "$AGENTWRAP_SANDBOX" == true ]]'
+}
+
+expect_protected_root() {
+    local runner="$1"
+    "$runner" python3 - <<'PYTEST'
+import os
+import stat
+
+for path in ("/", "/home", "/etc", "/usr", "/usr/bin", "/usr/bin/bwrap"):
+    info = os.stat(path)
+    assert info.st_uid != os.geteuid(), (path, info.st_uid)
+    assert not os.access(path, os.W_OK, effective_ids=True), path
+    assert os.statvfs(path).f_flag & os.ST_RDONLY, path
+assert stat.S_IMODE(os.stat("/").st_mode) == 0o755
+for path in (os.environ["HOME"], "/tmp", "/run", "/dev/shm"):
+    fd = os.open(path, os.O_RDONLY | os.O_DIRECTORY)
+    try:
+        name = f".agentwrap-write-{os.getpid()}"
+        out = os.open(name, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o600, dir_fd=fd)
+        os.close(out)
+        os.unlink(name, dir_fd=fd)
+    finally:
+        os.close(fd)
+PYTEST
+}
+
+expect_pi_system_bwrap() {
+    local runner="$1"
+    # Relocate only the sidecar, not its resources. With a system-only PATH and
+    # no bundled candidates, successful execution proves system bwrap was used.
+    run_with_optional_timeout 30 "$runner" bash -s <<'SH'
+set -euo pipefail
+sidecar="$(command -v pi-sandbox)"
+probe="$(mktemp -d /tmp/agentwrap-system-bwrap.XXXXXXXX)"
+trap 'rm -rf "$probe"' EXIT
+mkdir -p "$probe/bin" "$probe/home" "$probe/work/.pi"
+cp "$sidecar" "$probe/bin/pi-sandbox"
+test ! -e /tmp/codex-resources/bwrap
+test ! -e "$probe/codex-resources/bwrap"
+printf '%s\n' '{"ZeePal":{"sandbox":{"network_proxy":{"allow":[],"deny":[]}}}}' \
+    >"$probe/work/.pi/settings.json"
+unset CARGO_BIN_EXE_bwrap RUNFILES_DIR TEST_SRCDIR RUNFILES_MANIFEST_FILE
+PATH=/usr/bin:/bin HOME="$probe/home" "$probe/bin/pi-sandbox" run \
+    --fs unrestricted --net restricted --cwd "$probe/work" --approval deny -- \
+    bash -c 'set -eu; touch writable; touch /tmp/agentwrap-inner-$$; rm /tmp/agentwrap-inner-$$;
+        if curl -fsS --max-time 5 https://google.com >/dev/null 2>&1; then exit 1; fi'
+test -f "$probe/work/writable"
+SH
 }
 
 expect_ptrace_blocked() {
@@ -840,6 +890,9 @@ run_security_checks() {
     run_check 'trusted outer IPC sandbox contract is set and caller input is discarded' \
         expect_agentwrap_sandbox_contract "$runner"
 
+    run_check 'synthetic root and system ancestry are protected; temporary mounts accept writes' \
+        expect_protected_root "$runner"
+
     run_check 'seccomp filter is active' \
         expect_seccomp_mode "$runner"
 
@@ -865,6 +918,13 @@ run_security_checks() {
 
 run_codex_checks() {
     local runner="$1"
+
+    if runner_has_cmd "$runner" pi-sandbox; then
+        run_check 'pi-sandbox unrestricted filesystem/restricted networking uses SYSTEM bwrap without fallback' \
+            expect_pi_system_bwrap "$runner"
+    else
+        print_skip 'pi-sandbox SYSTEM bwrap regression (pi-sandbox unavailable)'
+    fi
 
     local codex_cli_readonly_file="$suite_codex_test_dir/cli-readonly-should-not-exist.txt"
     local codex_cli_workspace_restricted_file="$suite_codex_test_dir/cli-workspace-restricted.txt"
@@ -979,6 +1039,7 @@ run_runtime_checks() {
     fi
 }
 
+# shellcheck disable=SC2016 # Positional arguments expand in the sandbox shell.
 run_bind_checks() {
     local runner="$1"
     local workspace_rw_file="$2"

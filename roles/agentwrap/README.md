@@ -74,6 +74,7 @@ agentwrap-bwrap
 - `nftables` blocks private/special-use ranges by default and limits outbound traffic to approved uplinks.
 - `systemd-resolved` exposes DNS on the host-side veth so namespace DNS does not bypass host policy.
 - `bubblewrap` makes the workspace the primary writable surface; system paths are read-only and most of `$HOME` is synthetic/empty.
+- Synthetic `/` uses a read-only, host-root-owned template, keeping system executable ancestry protected for Codex. Its owner appears unmapped inside the user namespace, not as payload UID or necessarily UID 0.
 - Synthetic `passwd`/`group` files expose only `root`, the calling user/group, and `nobody`/`nogroup` when present.
 - The seccomp layer uses a baseline container-style allowlist while still permitting typical agent workloads.
 - The seccomp layer keeps the broad baseline allowlist and additionally permits the small set of extra operations inner `bwrap`/Codex need to set up their own sandbox (mount, pivot_root, umount2, the specific namespace-clone combinations used by those inner launches, and `unshare(CLONE_NEWUSER)` for the `/dev`/devpts setup path used by upstream `bwrap`).
@@ -82,6 +83,7 @@ agentwrap-bwrap
 ## Operational Notes
 - The network namespace name is intentionally hardcoded in `agentwrap-root`; see the note in `files/opt/agentwrap/agentwrap.conf`.
 - `agentwrap-bwrap` is intentionally weaker than `agentwrap` because it shares the caller's network namespace.
+- The template supports dynamic workspaces under `/home/$USER` and `/tmp`; other locations need pre-created mountpoints. Only `/home/$USER`, not `/home` or `/etc`, gets a writable synthetic home.
 - Private IPv4 allowlists in `files/etc/nftables.d/agentwrap.nft` are empty by default; add narrow exceptions there if needed.
 
 ## Validation

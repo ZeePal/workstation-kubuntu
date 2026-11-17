@@ -12,6 +12,48 @@
     - /etc/systemd/resolved.conf.d
     - /etc/netns/agentwrap-egress
 
+# Bind destinations must exist before mounting the read-only synthetic root.
+- name: Create protected synthetic root mountpoints
+  ansible.builtin.file:
+    path: "/opt/agentwrap/rootfs/{{ item }}"
+    state: directory
+    owner: root
+    group: root
+    mode: '0755'
+  loop:
+    - ''
+    - usr
+    - lib
+    - lib64
+    - bin
+    - sbin
+    - proc
+    - dev
+    - tmp
+    - run
+    - etc
+    - home
+    - "home/{{ USER }}"
+    - etc/alternatives
+    - etc/ssl
+    - etc/ssl/certs
+    - etc/ca-certificates
+    - etc/fonts
+
+- name: Create protected synthetic root file mountpoints
+  ansible.builtin.copy:
+    content: ''
+    dest: "/opt/agentwrap/rootfs/etc/{{ item }}"
+    owner: root
+    group: root
+    mode: '0644'
+  loop:
+    - resolv.conf
+    - hosts
+    - passwd
+    - group
+    - localtime
+
 - name: Install agentwrap core config file
   copy:
     src: "{{ role_path }}/files/opt/agentwrap/agentwrap.conf"

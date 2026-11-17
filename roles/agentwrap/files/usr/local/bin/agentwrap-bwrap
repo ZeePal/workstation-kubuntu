@@ -133,12 +133,27 @@ for bind in "${EXTRA_RW[@]}"; do
     fi
 done
 
+# A caller-owned tmpfs root fails Codex's executable ancestry trust checks even
+# when read-only. Host root is deliberately never bound into this sandbox.
+rootfs=/opt/agentwrap/rootfs
+if [[ ! -d "$rootfs" || "$(stat -c %u "$rootfs")" != 0 || -w "$rootfs" || $current_uid == 0 ]]; then
+    echo "ERROR: install the root-owned, non-writable agentwrap rootfs template before running" >&2
+    exit 1
+fi
+
+if [[ "$HOME" != "/home/$(id -un)" || ! -d "$rootfs$HOME" ]]; then
+    echo "ERROR: agentwrap requires a provisioned /home/$(id -un) mountpoint; apply the role for this user" >&2
+    exit 1
+fi
+
 bwrap_args=(
     --unshare-all
     --share-net
     --unshare-user
     --die-with-parent
     --new-session
+    --ro-bind "$rootfs" /
+    --tmpfs "$HOME"
     --ro-bind /usr /usr
     --ro-bind /lib /lib
     --ro-bind /lib64 /lib64
@@ -159,7 +174,6 @@ bwrap_args=(
     --ro-bind /etc/alternatives /etc/alternatives
     --ro-bind-try /etc/ssl/certs /etc/ssl/certs
     --ro-bind-try /etc/ca-certificates /etc/ca-certificates
-    --dir "$HOME"
     --chdir "$PWD"
     --setenv PATH "$AGENTWRAP_PATH"
     --setenv AGENTWRAP_SANDBOX true
