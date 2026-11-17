@@ -84,6 +84,23 @@ agentwrap-bwrap
 - The network namespace name is intentionally hardcoded in `agentwrap-root`; see the note in `files/opt/agentwrap/agentwrap.conf`.
 - `agentwrap-bwrap` is intentionally weaker than `agentwrap` because it shares the caller's network namespace.
 - The template supports dynamic workspaces under `/home/$USER` and `/tmp`; other locations need pre-created mountpoints. Only `/home/$USER`, not `/home` or `/etc`, gets a writable synthetic home.
+- Drops from `agentwrap_input` and `agentwrap_forward` log packet metadata (including destinations)
+  to the host kernel log/journald with prefix `agentwrap-drop: `, outside the sandbox.
+  Logging shares a 5 packets/second budget with an initial burst of 10; drops remain unconditional.
+  Host-origin mDNS loopback in the input chain is silently dropped without counting, matching only
+  `169.254.100.1 -> 224.0.0.251` or host-local IPv6 link-local sources to `ff02::fb`, UDP 5353 -> 5353.
+  Sandbox-origin and forwarded traffic retain drop logging.
+- Veth initialization disables resolved's mDNS and LLMNR on the host-side interface with `resolvectl`.
+  These settings are runtime-only and can reset on resolved restart; the narrow mDNS log exclusions
+  cover startup/restart noise without permitting discovery. Ordinary DNS remains enabled.
+  Inspect with `sudo journalctl -k -g 'agentwrap-drop: '`.
+- Existing workspace-root `.git`, `.codex`, `.agents`, `.claude`, and `.pi/settings.json` paths are rebound read-only.
+  Protecting `.pi/settings.json` prevents sandbox edits to project sandbox policy when
+  `PI_SANDBOX_PROJECT_SETTINGS_TRUSTED` enables project overrides of user settings.
+  The rest of `.pi` stays writable so Pi can create and remove `settings.json.lock` when reading settings.
+  Settings saves are intentionally blocked; other extension files in `.pi` are not protected.
+  Missing paths are not reserved; create `.pi/settings.json` before launch to protect it.
+  `AGENTS.md` and `.github` are intentionally not carved out.
 - Private IPv4 allowlists in `files/etc/nftables.d/agentwrap.nft` are empty by default; add narrow exceptions there if needed.
 
 ## Validation

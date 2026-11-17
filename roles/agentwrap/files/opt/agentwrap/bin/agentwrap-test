@@ -368,6 +368,40 @@ for path in (os.environ["HOME"], "/tmp", "/run", "/dev/shm"):
 PYTEST
 }
 
+expect_workspace_pi_settings_readonly() {
+    local runner="$1"
+    local probe="$test_root/$suite_label/pi-carveout"
+    mkdir -p "$probe/.pi" "$probe/.github" "$probe/subdir"
+    printf '%s\n' '{"sandbox":"original"}' >"$probe/.pi/settings.json"
+    printf '%s\n' 'original' >"$probe/AGENTS.md"
+    (
+        cd "$probe/subdir"
+        git -C "$probe" init -q
+        "$runner" python3 - "$probe" <<'PYTEST'
+import errno
+import pathlib
+import sys
+
+root = pathlib.Path(sys.argv[1])
+settings = root / ".pi/settings.json"
+assert settings.read_text() == '{"sandbox":"original"}\n'
+for path in (settings,):
+    try:
+        path.write_text("changed")
+    except OSError as exc:
+        assert exc.errno == errno.EROFS, (path, exc)
+    else:
+        raise AssertionError(f"Protected config was writable: {path}")
+lock = root / ".pi/settings.json.lock"
+for _ in range(2):
+    lock.mkdir()
+    lock.rmdir()
+for path in (root / ".pi/new.json", root / "AGENTS.md", root / ".github/probe", root / "writable"):
+    path.write_text("allowed")
+PYTEST
+    )
+}
+
 expect_pi_system_bwrap() {
     local runner="$1"
     # Relocate only the sidecar, not its resources. With a system-only PATH and
@@ -892,6 +926,13 @@ run_security_checks() {
 
     run_check 'synthetic root and system ancestry are protected; temporary mounts accept writes' \
         expect_protected_root "$runner"
+
+    if [[ $HOST_HAS_GIT -eq 1 ]]; then
+        run_check 'workspace-root .pi/settings.json is read-only; locks and other paths stay writable' \
+            expect_workspace_pi_settings_readonly "$runner"
+    else
+        print_skip 'workspace-root .pi/settings.json carveout (git unavailable)'
+    fi
 
     run_check 'seccomp filter is active' \
         expect_seccomp_mode "$runner"

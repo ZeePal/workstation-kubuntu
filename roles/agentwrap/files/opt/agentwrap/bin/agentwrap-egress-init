@@ -26,6 +26,12 @@ fi
 ip addr replace "$HOST_VETH_ADDR_CIDR" dev "$HOST_VETH_NAME"
 ip link set "$HOST_VETH_NAME" up
 
+# This link serves sandbox DNS, not LAN discovery. These per-link settings are
+# runtime-only; resolved restarts may reset them, so nftables also quiets mDNS.
+# https://www.freedesktop.org/software/systemd/man/latest/resolvectl.html
+resolvectl mdns "$HOST_VETH_NAME" no
+resolvectl llmnr "$HOST_VETH_NAME" no
+
 if ! ip -n "$NETNS_NAME" link show "$NS_VETH_NAME" >/dev/null 2>&1; then
     echo "ERROR: namespace interface $NS_VETH_NAME is missing in $NETNS_NAME" >&2
     exit 1

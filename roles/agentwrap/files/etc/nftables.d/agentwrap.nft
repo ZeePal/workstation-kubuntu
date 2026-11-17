@@ -112,21 +112,37 @@ table inet filter {
     }
 
 
+    # Share the log budget across all sandbox drops. The unconditional verdict
+    # must stay separate so exhausting the log limit never permits traffic.
+    # nft log/limit semantics: https://netfilter.org/projects/nftables/manpage.html
+    chain agentwrap_drop {
+        limit rate 5/second burst 10 packets log prefix "agentwrap-drop: "
+        drop
+    }
+
     chain agentwrap_input {
+        # Host discovery can loop back on the veth, including during startup or
+        # after resolved loses its runtime per-link settings on restart. Quiet
+        # only host-origin mDNS multicast (UDP 5353 -> 5353), not sandbox probes.
+        # IPv6 uses a host-local link-local source match because its address can
+        # change when the veth is recreated. Host discovery noise is neither
+        # logged nor counted; it remains blocked, not allowed.
+        ip saddr 169.254.100.1 ip daddr 224.0.0.251 udp sport 5353 udp dport 5353 drop
+        ip6 saddr fe80::/10 ip6 daddr ff02::fb fib saddr type local udp sport 5353 udp dport 5353 drop
         meta l4proto tcp tcp dport @agentwrap_allowed_host_tcp_ports counter accept
         meta l4proto udp udp dport @agentwrap_allowed_host_udp_ports counter accept
-        counter drop
+        counter jump agentwrap_drop
     }
 
     chain agentwrap_forward {
         ct state established,related counter accept
         iifname @agentwrap_host_interfaces meta l4proto tcp ip daddr . tcp dport @agentwrap_allowed_private_tcp_ipv4 counter accept
         iifname @agentwrap_host_interfaces meta l4proto udp ip daddr . udp dport @agentwrap_allowed_private_udp_ipv4 counter accept
-        iifname @agentwrap_host_interfaces ip daddr @agentwrap_blocked_ipv4 counter drop
-        iifname @agentwrap_host_interfaces ip6 daddr @agentwrap_blocked_ipv6 counter drop
+        iifname @agentwrap_host_interfaces ip daddr @agentwrap_blocked_ipv4 counter jump agentwrap_drop
+        iifname @agentwrap_host_interfaces ip6 daddr @agentwrap_blocked_ipv6 counter jump agentwrap_drop
         # Sandboxed traffic may leave only through explicitly approved uplinks
         iifname @agentwrap_host_interfaces oifname @agentwrap_allowed_uplinks counter accept
-        counter drop
+        counter jump agentwrap_drop
     }
 }
 
